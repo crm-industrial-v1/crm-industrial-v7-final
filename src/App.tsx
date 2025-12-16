@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from './lib/supabase';
 import { 
   LayoutDashboard, Users, UserPlus, Search, Trash2, Edit, 
-  Phone, Briefcase, Save, Calendar, Factory, Package, Menu, 
+  Briefcase, Save, Calendar, Factory, Package, Menu, 
   Loader2, CheckCircle2, X, Clock, ArrowRight, 
-  ArrowLeft, Target, FileText, ChevronDown
+  ArrowLeft, Target, FileText
 } from 'lucide-react';
 
 // --- CONSTANTES ---
@@ -513,7 +513,7 @@ export default function App() {
              <button onClick={() => { setEditingContact(null); setView('form'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'form')}><UserPlus size={20}/> <span>Nuevo Diagnóstico</span></button>
           </nav>
           <div className="p-4 bg-slate-950 text-xs text-slate-500 text-center border-t border-slate-800">
-             v4.0 - FINAL
+             v4.1 - FINAL CLEAN
           </div>
        </aside>
 
