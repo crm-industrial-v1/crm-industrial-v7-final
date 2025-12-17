@@ -3,7 +3,7 @@ import { supabase } from './lib/supabase';
 import { 
   LayoutDashboard, Users, UserPlus, Search, Trash2, Edit, 
   Briefcase, CheckCircle2, Clock, Target, FileText, 
-  LogOut, Shield, UserCog, Menu, Loader2, Factory, Calendar, Filter
+  LogOut, Shield, UserCog, Menu, Loader2, Factory, Calendar
 } from 'lucide-react';
 
 // --- IMPORTACIONES ---
@@ -13,7 +13,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ---
-const APP_VERSION = "V7.5 - Role View Manager"; 
+const APP_VERSION = "V7.5.1 - Build Fix"; 
 
 // --- ESTILOS COMUNES ---
 const inputClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm text-sm";
