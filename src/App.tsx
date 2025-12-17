@@ -12,8 +12,8 @@ import { Button } from './components/ui/Button';
 import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
-// --- VERSIÓN ---
-const APP_VERSION = "V7.1 - Dynamic Materials Support"; 
+// --- VERSIÓN (CAMBIADA AQUÍ) ---
+const APP_VERSION = "V7.2 - Final Mobile"; 
 
 // --- ESTILOS COMUNES ---
 const inputClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm text-sm";
