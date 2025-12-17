@@ -3,7 +3,7 @@ import { supabase } from './lib/supabase';
 import { 
   LayoutDashboard, Users, UserPlus, Search, Trash2, Edit, 
   Briefcase, CheckCircle2, Clock, Target, FileText, 
-  LogOut, Shield, UserCog, Menu, Loader2, Factory, Calendar
+  LogOut, Shield, UserCog, Menu, Loader2, Factory, Calendar, Filter
 } from 'lucide-react';
 
 // --- IMPORTACIONES ---
@@ -12,8 +12,8 @@ import { Button } from './components/ui/Button';
 import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
-// --- AQUÍ ESTÁ LA LÍNEA DE LA VERSIÓN (Línea 15 aprox) ---
-const APP_VERSION = "V7.4 - Mobile Fixed"; 
+// --- VERSIÓN ---
+const APP_VERSION = "V7.5 - Role View Manager"; 
 
 // --- ESTILOS COMUNES ---
 const inputClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm text-sm";
@@ -81,6 +81,8 @@ export default function App() {
   async function fetchContacts() {
     try {
       setLoading(true);
+      // Traemos TODO. Luego filtraremos en memoria según el rol para velocidad de UI.
+      // En una app real muy grande, esto se filtra en el SELECT de supabase con RLS.
       const { data, error } = await supabase
         .from('industrial_contacts')
         .select('*, profiles:user_id(email)')
@@ -170,11 +172,18 @@ export default function App() {
 
   // --- DASHBOARD ---
   const DashboardView = () => {
-    const total = contacts.length;
-    const clients = contacts.filter(c => c.sap_status === 'Cliente SAP').length;
-    const leads = contacts.filter(c => ['Lead SAP', 'Nuevo Prospecto'].includes(c.sap_status)).length;
+    // Lógica de visualización en Dashboard:
+    // Comercial: Solo sus datos.
+    // Jefe/Admin: Datos globales.
+    const relevantContacts = userRole === 'sales' 
+        ? contacts.filter(c => c.user_id === session.user.id) 
+        : contacts;
+
+    const total = relevantContacts.length;
+    const clients = relevantContacts.filter(c => c.sap_status === 'Cliente SAP').length;
+    const leads = relevantContacts.filter(c => ['Lead SAP', 'Nuevo Prospecto'].includes(c.sap_status)).length;
     const today = new Date().toISOString().split('T')[0];
-    const pending = contacts.filter(c => c.next_action_date && c.next_action_date <= today).length;
+    const pending = relevantContacts.filter(c => c.next_action_date && c.next_action_date <= today).length;
 
     return (
       <div className="space-y-6 animate-in fade-in duration-500 w-full overflow-hidden pb-24">
@@ -184,6 +193,7 @@ export default function App() {
                 <p className="text-xs text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded inline-block mt-1">{APP_VERSION}</p>
              </div>
              {userRole === 'sales' && <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-bold">Mis Datos</span>}
+             {userRole !== 'sales' && <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-bold">Vista Global</span>}
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 w-full">
@@ -197,13 +207,13 @@ export default function App() {
           <Card className="p-4 md:p-6 h-full">
             <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-slate-800"><Calendar className="text-blue-600"/> Agenda</h3>
             <div className="space-y-3">
-               {contacts.filter(c => c.next_action_date).sort((a,b) => new Date(a.next_action_date).getTime() - new Date(b.next_action_date).getTime()).slice(0,5).map(c => (
+               {relevantContacts.filter(c => c.next_action_date).sort((a,b) => new Date(a.next_action_date).getTime() - new Date(b.next_action_date).getTime()).slice(0,5).map(c => (
                  <div key={c.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100 shadow-sm active:bg-blue-50 transition-colors cursor-pointer" onClick={() => { setEditingContact(c); setView('form'); }}>
                    <div className="min-w-0"><span className="font-bold text-slate-800 text-sm block truncate">{c.next_action}</span><p className="text-xs text-slate-500 mt-1 flex items-center gap-1 truncate"><FileText size={12}/> {c.fiscal_name}</p></div>
                    <div className="text-right shrink-0 ml-2"><p className={`text-xs font-bold ${c.next_action_date <= today ? 'text-red-600' : 'text-blue-600'}`}>{c.next_action_date}</p><p className="text-xs text-slate-400">{c.next_action_time?.slice(0,5)}</p></div>
                  </div>
                ))}
-               {contacts.length === 0 && <div className="p-6 text-center text-slate-400 border-2 border-dashed border-slate-100 rounded-xl">Sin acciones.</div>}
+               {relevantContacts.length === 0 && <div className="p-6 text-center text-slate-400 border-2 border-dashed border-slate-100 rounded-xl">Sin acciones.</div>}
             </div>
           </Card>
           <Card className="p-6 flex flex-col justify-center items-center text-center bg-gradient-to-br from-white to-slate-50">
@@ -218,20 +228,96 @@ export default function App() {
 
   // --- LISTA ---
   const ListView = () => {
-    const filtered = contacts.filter(c => c.fiscal_name?.toLowerCase().includes(searchTerm.toLowerCase()) || c.contact_person?.toLowerCase().includes(searchTerm.toLowerCase()));
+    // Estado local para el filtro de vista (Solo visible para Managers/Admins)
+    // 'all' = Todos, 'mine' = Míos, uuid = Usuario específico
+    const [viewFilter, setViewFilter] = useState<string>('all'); 
+    
+    // 1. Filtrado por ROL y SELECCIÓN
+    let displayContacts = contacts;
+
+    if (userRole === 'sales') {
+        // COMERCIAL: Forzamos ver solo los suyos
+        displayContacts = contacts.filter(c => c.user_id === session.user.id);
+    } else {
+        // JEFE / ADMIN: Filtramos según lo que elija en el desplegable
+        if (viewFilter === 'mine') {
+            displayContacts = contacts.filter(c => c.user_id === session.user.id);
+        } else if (viewFilter !== 'all') {
+            displayContacts = contacts.filter(c => c.user_id === viewFilter);
+        }
+        // Si es 'all', no filtramos nada extra
+    }
+
+    // 2. Filtrado por BUSCADOR (Texto)
+    const filtered = displayContacts.filter(c => 
+        c.fiscal_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        c.contact_person?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    // Obtener lista única de comerciales para el desplegable (Solo Jefes)
+    const uniqueSalesUsers = Array.from(new Set(contacts.map(c => c.user_id)))
+        .map(id => {
+            const contact = contacts.find(c => c.user_id === id);
+            return { id, email: contact?.profiles?.email || 'Desconocido' };
+        })
+        .filter(u => u.email !== 'Desconocido');
+
     return (
       <div className="space-y-4 animate-in fade-in duration-500 pb-24 w-full overflow-hidden">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4">
-           <div className="w-full md:w-auto"><h2 className="text-xl font-bold text-slate-800">Base de Datos</h2><p className="text-xs text-slate-500">{userRole === 'sales' ? 'Mis Fichas' : 'Global'}</p></div>
-           <div className="relative w-full md:w-80"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} /><input type="text" placeholder="Buscar..." className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+        
+        {/* CABECERA Y FILTROS */}
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
+           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+               <div>
+                   <h2 className="text-xl font-bold text-slate-800">Base de Datos</h2>
+                   <p className="text-xs text-slate-500">
+                       {userRole === 'sales' ? 'Mis Fichas' : `Mostrando: ${viewFilter === 'all' ? 'Todos' : viewFilter === 'mine' ? 'Mis Fichas' : 'Filtro Usuario'}`}
+                   </p>
+               </div>
+
+               {/* BARRA DE HERRAMIENTAS PARA JEFES/ADMINS */}
+               {(userRole === 'manager' || userRole === 'admin') && (
+                   <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200 w-full md:w-auto overflow-x-auto">
+                       <button onClick={() => setViewFilter('all')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors whitespace-nowrap ${viewFilter === 'all' ? 'bg-white text-blue-600 shadow-sm border' : 'text-slate-500 hover:text-slate-700'}`}>Todos</button>
+                       <button onClick={() => setViewFilter('mine')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors whitespace-nowrap ${viewFilter === 'mine' ? 'bg-white text-blue-600 shadow-sm border' : 'text-slate-500 hover:text-slate-700'}`}>Míos</button>
+                       <div className="h-4 w-px bg-slate-300 mx-1"></div>
+                       <select 
+                            value={viewFilter !== 'all' && viewFilter !== 'mine' ? viewFilter : ''} 
+                            onChange={(e) => setViewFilter(e.target.value || 'all')}
+                            className="bg-transparent text-xs font-bold text-slate-600 outline-none min-w-[120px]"
+                       >
+                           <option value="">Filtrar por usuario...</option>
+                           {uniqueSalesUsers.map(u => (
+                               <option key={u.id} value={u.id}>{u.email}</option>
+                           ))}
+                       </select>
+                   </div>
+               )}
+           </div>
+
+           <div className="relative w-full"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} /><input type="text" placeholder="Buscar empresa o contacto..." className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
         </div>
+
+        {/* LISTADO DE TARJETAS */}
         {loading ? <div className="text-center p-20"><Loader2 className="animate-spin mx-auto text-blue-600 mb-4" size={32}/><p className="text-slate-500">Cargando...</p></div> : (
           <div className="grid gap-3 w-full">
+            {filtered.length === 0 && <div className="text-center py-10 text-slate-400">No se encontraron resultados.</div>}
             {filtered.map(c => (
               <Card key={c.id} className="p-4 hover:shadow-lg transition-all border border-slate-200">
                 <div className="flex justify-between items-start gap-3">
                   <div className="flex-1 min-w-0">
-                    <div className="flex flex-col gap-1 mb-2"><h3 className="font-bold text-base text-slate-900 truncate">{c.fiscal_name}</h3><span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border w-fit ${c.sap_status === 'Cliente SAP' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>{c.sap_status}</span></div>
+                    <div className="flex flex-col gap-1 mb-2">
+                        <h3 className="font-bold text-base text-slate-900 truncate">{c.fiscal_name}</h3>
+                        <div className="flex gap-2">
+                            <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border w-fit ${c.sap_status === 'Cliente SAP' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>{c.sap_status}</span>
+                            {/* Mostrar dueño de la ficha solo si soy Jefe/Admin */}
+                            {(userRole !== 'sales' && c.profiles?.email) && (
+                                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border bg-slate-100 text-slate-500 border-slate-200 flex items-center gap-1 max-w-[120px] truncate">
+                                    <UserCog size={10}/> {c.profiles.email.split('@')[0]}
+                                </span>
+                            )}
+                        </div>
+                    </div>
                     <div className="flex flex-col gap-1 text-sm text-slate-600"><span className="flex items-center gap-2 truncate"><Users size={14} className="text-slate-400 shrink-0"/> {c.contact_person || 'Sin contacto'}</span><span className="flex items-center gap-2 truncate"><Briefcase size={14} className="text-slate-400 shrink-0"/> <span className="text-slate-500 text-xs">Titular:</span> {c.profiles?.email || 'N/A'}</span></div>
                   </div>
                   <div className="flex flex-col gap-2 shrink-0"><button onClick={() => { setEditingContact(c); setView('form'); }} className="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 rounded-lg"><Edit size={18}/></button>{(userRole === 'admin' || c.user_id === session.user.id) && (<button onClick={() => handleDelete(c.id)} className="p-2 text-slate-400 hover:text-red-600 bg-slate-50 rounded-lg"><Trash2 size={18}/></button>)}</div>
