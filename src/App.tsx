@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 
 // --- CONSTANTES ---
+const APP_VERSION = "V5.1 Usuarios y Grid Movil"; // <--- AQUÍ ESTÁ TU MARCA DE VERSIÓN
+
 const MATERIAL_OPTIONS = [
   "00 - Fleje Manual", "00 - Fleje Automático", "00 - Fleje Poliéster (PET)", "00 - Fleje Acero",
   "01 - Film Estirable Manual", "01 - Film Estirable Automático", "01 - Film Macroperforado",
@@ -219,7 +221,10 @@ export default function App() {
     return (
       <div className="space-y-6 animate-in fade-in duration-500 w-full overflow-hidden pb-24">
         <div className="flex justify-between items-center px-1">
-             <h2 className="text-lg md:text-2xl font-bold text-slate-800">Hola, {userRole === 'admin' ? 'Admin' : userRole === 'manager' ? 'Jefe' : 'Comercial'}</h2>
+             <div>
+                <h2 className="text-lg md:text-2xl font-bold text-slate-800">Hola, {userRole === 'admin' ? 'Admin' : userRole === 'manager' ? 'Jefe' : 'Comercial'}</h2>
+                <p className="text-xs text-blue-600 font-bold">{APP_VERSION}</p>
+             </div>
              {userRole === 'sales' && <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-bold">Mis Datos</span>}
         </div>
         
