@@ -289,9 +289,9 @@ export default function App() {
              <button onClick={() => setIsSidebarOpen(true)} className="text-slate-600 p-2 active:bg-slate-100 rounded"><Menu size={24} /></button>
              <span className="font-bold text-slate-800">CRM Industrial</span><div className="w-8"></div>
           </header>
-          {/* AQUÍ HE QUITADO EL PADDING p-2 DEL MÓVIL PARA EVITAR SCROLL */}
+          {/* AQUÍ HE APLICADO EL CAMBIO DE PADDING: p-1 para móvil y pb-20 extra */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden p-0 md:p-8 w-full scroll-smooth bg-slate-50">
-            <div className="p-2 md:p-0"> {/* Padding interno para Dashboard y Listas */}
+            <div className="p-1 md:p-0 pb-20"> {/* Padding interno para Dashboard y Listas */}
                 {view === 'dashboard' && <DashboardView />}
                 {view === 'list' && <ListView />}
                 {view === 'admin' && <AdminView />}
