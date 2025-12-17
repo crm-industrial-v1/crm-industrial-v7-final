@@ -2,30 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from './lib/supabase';
 import { 
   LayoutDashboard, Users, UserPlus, Search, Trash2, Edit, 
-  Briefcase, Save, Calendar, Factory, Package, Menu, 
-  Loader2, CheckCircle2, X, Clock, ArrowRight, 
-  ArrowLeft, Target, FileText, LogOut, Shield, UserCog
+  Briefcase, CheckCircle2, Clock, Target, FileText, 
+  LogOut, Shield, UserCog, Menu, Loader2, Factory, Calendar
 } from 'lucide-react';
 
-// --- IMPORTACIONES DE COMPONENTES ---
+// --- NUEVAS IMPORTACIONES ---
 import { Card } from './components/ui/Card';
 import { Button } from './components/ui/Button';
 import { SectionHeader } from './components/ui/SectionHeader';
+import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ---
-const APP_VERSION = "V6.0 - Refactor UI Components"; 
-
-const MATERIAL_OPTIONS = [
-  "00 - Fleje Manual", "00 - Fleje Automático", "00 - Fleje Poliéster (PET)", "00 - Fleje Acero",
-  "01 - Film Estirable Manual", "01 - Film Estirable Automático", "01 - Film Macroperforado",
-  "02 - Precinto PP", "02 - Precinto PVC", "02 - Precinto Personalizado",
-  "03 - Film Retráctil", "05 - Protección", "06 - Bolsas", "99 - Otros"
-];
-
-const SECTORS = [
-  "Agroalimentario", "Logística y Transporte", "Industria Metal", 
-  "Construcción", "Químico / Farmacéutico", "E-commerce / Retail", "Otro"
-];
+const APP_VERSION = "V7.1 - Dynamic Materials Support"; 
 
 // --- ESTILOS COMUNES ---
 const inputClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm text-sm";
@@ -256,130 +244,6 @@ export default function App() {
     );
   };
 
-  // --- FORMULARIO (GRID ARREGLADO) ---
-  const FormView = () => {
-    const [activeTab, setActiveTab] = useState('sap');
-    const [saving, setSaving] = useState(false);
-    
-    const TABS = [
-        { id: 'sap', label: 'Identificación SAP', icon: Search },
-        { id: 'registro', label: 'Datos Registro', icon: Briefcase },
-        { id: 'negocio', label: 'Negocio', icon: Factory },
-        { id: 'materiales', label: 'Materiales', icon: Package },
-        { id: 'maquinaria', label: 'Maquinaria', icon: Factory },
-        { id: 'necesidades', label: 'Necesidades', icon: Search },
-        { id: 'cierre', label: 'Cierre', icon: Calendar }
-    ];
-
-    const generateInitialState = () => {
-        let mats: any = {};
-        for(let i=1; i<=7; i++) {
-            mats[`mat${i}_type`] = ''; mats[`mat${i}_id`] = ''; mats[`mat${i}_consumption`] = '';
-            mats[`mat${i}_supplier`] = ''; mats[`mat${i}_price`] = ''; mats[`mat${i}_notes`] = '';
-            if(i > 1) mats[`hasMat${i}`] = false;
-        }
-        return {
-            sap_status: 'Nuevo Prospecto', sap_id: '',
-            fiscal_name: '', cif: '', contact_person: '', job_title: '', phone: '', email: '', address: '',
-            sector: 'Agroalimentario', main_products: '', volume: 'Medio', packaging_mgmt: 'Mixto',
-            ...mats,
-            quality_rating: '3', sustainable_interest: 'No',
-            mac1_type: '', mac1_brand: '', mac1_age: 'Media', mac1_status: 'Operativa',
-            pain_points: [], budget: 'Sin presupuesto fijo',
-            detected_interest: [], solution_summary: '', next_action: 'Llamada de seguimiento', next_action_date: '', next_action_time: '09:00', responsible: ''
-        };
-    };
-
-    const [formData, setFormData] = useState(() => {
-        if (editingContact) {
-            const data = { ...editingContact };
-            for(let i=2; i<=7; i++) {
-                if(data[`mat${i}_type`] || data[`mat${i}_id`]) data[`hasMat${i}`] = true;
-            }
-            return data;
-        }
-        return generateInitialState();
-    });
-
-    const handleChange = (field: string, value: any) => setFormData({ ...formData, [field]: value });
-    const handleMultiSelect = (field: string, value: string) => {
-        const current = formData[field] || [];
-        const updated = current.includes(value) ? current.filter((i: string) => i !== value) : [...current, value];
-        setFormData({ ...formData, [field]: updated });
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
-      setSaving(true);
-      const payload: any = { ...formData };
-      for(let i=2; i<=7; i++) delete payload[`hasMat${i}`];
-      delete payload.id; delete payload.created_at; delete payload.profiles;
-      if (!payload.next_action_date) payload.next_action_date = null;
-      if (!payload.next_action_time) payload.next_action_time = null;
-      if (!editingContact) payload.user_id = session.user.id;
-
-      let error;
-      try {
-        if (editingContact) {
-            const res = await supabase.from('industrial_contacts').update(payload).eq('id', editingContact.id);
-            error = res.error;
-        } else {
-            const res = await supabase.from('industrial_contacts').insert([payload]);
-            error = res.error;
-        }
-        if (!error) { await fetchContacts(); setView('list'); } 
-        else { throw error; }
-      } catch(err: any) { alert('Error: ' + err.message); } 
-      finally { setSaving(false); }
-    };
-
-    const goToNextTab = () => {
-        const idx = TABS.findIndex(t => t.id === activeTab);
-        if(idx < TABS.length -1) setActiveTab(TABS[idx+1].id);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-    const goToPrevTab = () => {
-        const idx = TABS.findIndex(t => t.id === activeTab);
-        if(idx > 0) setActiveTab(TABS[idx-1].id);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-
-    return (
-      <div className="max-w-5xl mx-auto pb-32 w-full overflow-hidden">
-        <div className="flex flex-col md:flex-row justify-between mb-4 sticky top-0 bg-slate-100/95 z-30 p-4 -mx-2 md:-mx-4 backdrop-blur-md border-b border-slate-200">
-           <div className="mb-3 md:mb-0"><h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">{editingContact ? <Edit className="text-blue-600 w-5 h-5"/> : <UserPlus className="text-blue-600 w-5 h-5"/>}{editingContact ? 'Editar' : 'Nuevo'}</h2></div>
-           <div className="flex gap-2 w-full md:w-auto"><Button variant="secondary" onClick={() => setView('list')} className="flex-1 md:flex-none justify-center">Cancelar</Button><Button variant="primary" onClick={handleSubmit} icon={Save} disabled={saving} className="flex-1 md:flex-none justify-center">{saving ? '...' : 'Guardar'}</Button></div>
-        </div>
-
-        {/* --- GRID DE 3 COLUMNAS PARA MÓVIL --- */}
-        <div className="sticky top-[85px] z-20 mb-6 bg-slate-100 pt-2 pb-2">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-2">
-                <div className="grid grid-cols-3 md:flex md:gap-2 gap-1"> 
-                    {TABS.map(tab => (
-                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} 
-                            className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all text-[10px] md:text-sm gap-1 border ${activeTab === tab.id ? 'bg-blue-50 border-blue-200 text-blue-700 font-bold shadow-sm' : 'bg-white border-transparent text-slate-500 hover:bg-slate-50'} ${'min-h-[55px] md:min-w-[120px]'}`}
-                        >
-                            <tab.icon size={18} className={`mb-0.5 ${activeTab === tab.id ? 'text-blue-600' : 'text-slate-400'}`}/>
-                            <span className="whitespace-normal text-center leading-none px-0.5 break-words w-full">{tab.label}</span>
-                        </button>
-                    ))}
-                </div>
-            </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6 w-full px-1">
-            {activeTab === 'sap' && (<Card className="p-4 md:p-8"><SectionHeader title="Identificación SAP" icon={Search} /><div className="grid grid-cols-1 gap-4"><div><label className={labelClass}>Estado</label><select className={selectClass} value={formData.sap_status} onChange={e => handleChange('sap_status', e.target.value)}><option>Nuevo Prospecto</option><option>Lead SAP</option><option>Cliente SAP</option></select></div><div><label className={labelClass}>Código SAP</label><input className={inputClass} placeholder="Ej: C000450" value={formData.sap_id} onChange={e => handleChange('sap_id', e.target.value)} /></div></div><div className="flex justify-end mt-6 pt-4 border-t"><Button onClick={goToNextTab} icon={ArrowRight} variant="secondary" className="w-full md:w-auto">Siguiente</Button></div></Card>)}
-            {activeTab === 'registro' && (<Card className="p-4 md:p-8"><SectionHeader title="Datos" icon={Briefcase} /><div className="grid grid-cols-1 gap-4"><div><label className={labelClass}>Fiscal *</label><input required className={inputClass} value={formData.fiscal_name} onChange={e => handleChange('fiscal_name', e.target.value)} /></div><div><label className={labelClass}>CIF *</label><input required className={inputClass} value={formData.cif} onChange={e => handleChange('cif', e.target.value)} /></div><div><label className={labelClass}>Contacto</label><input className={inputClass} value={formData.contact_person} onChange={e => handleChange('contact_person', e.target.value)} /></div><div><label className={labelClass}>Cargo</label><input className={inputClass} value={formData.job_title} onChange={e => handleChange('job_title', e.target.value)} /></div><div><label className={labelClass}>Teléfono</label><input className={inputClass} value={formData.phone} onChange={e => handleChange('phone', e.target.value)} /></div><div><label className={labelClass}>Email</label><input type="email" className={inputClass} value={formData.email} onChange={e => handleChange('email', e.target.value)} /></div><div className="md:col-span-2"><label className={labelClass}>Dirección</label><input className={inputClass} value={formData.address} onChange={e => handleChange('address', e.target.value)} /></div></div><div className="flex gap-3 mt-6 pt-4 border-t"><Button onClick={goToPrevTab} icon={ArrowLeft} variant="ghost" className="flex-1">Anterior</Button><Button onClick={goToNextTab} icon={ArrowRight} variant="secondary" className="flex-1">Siguiente</Button></div></Card>)}
-            {activeTab === 'negocio' && (<Card className="p-4 md:p-8"><SectionHeader title="Negocio" icon={Factory} /><div className="grid grid-cols-1 gap-4"><div><label className={labelClass}>Sector</label><select className={selectClass} value={formData.sector} onChange={e => handleChange('sector', e.target.value)}>{SECTORS.map(s => <option key={s} value={s}>{s}</option>)}</select></div><div><label className={labelClass}>Volumen</label><select className={selectClass} value={formData.volume} onChange={e => handleChange('volume', e.target.value)}><option>Bajo</option><option>Medio</option><option>Alto</option></select></div><div><label className={labelClass}>Embalaje</label><select className={selectClass} value={formData.packaging_mgmt} onChange={e => handleChange('packaging_mgmt', e.target.value)}><option>Interno</option><option>Externalizado</option><option>Mixto</option></select></div><div><label className={labelClass}>Productos</label><input className={inputClass} value={formData.main_products} onChange={e => handleChange('main_products', e.target.value)} /></div></div><div className="flex gap-3 mt-6 pt-4 border-t"><Button onClick={goToPrevTab} icon={ArrowLeft} variant="ghost" className="flex-1">Anterior</Button><Button onClick={goToNextTab} icon={ArrowRight} variant="secondary" className="flex-1">Siguiente</Button></div></Card>)}
-            {activeTab === 'materiales' && (<Card className="p-4 md:p-8 bg-slate-50"><SectionHeader title="Materiales" icon={Package} />{[1,2,3,4,5,6,7].map(num => {if (!(num === 1 || formData[`hasMat${num}`])) return null;return (<div key={num} className="rounded-xl border border-slate-200 mb-6 bg-white overflow-hidden"><div className="p-3 border-b bg-slate-50 flex justify-between items-center"><span className="text-xs font-bold px-2 py-1 rounded bg-blue-100 text-blue-700">MAT {num}</span>{num > 1 && <button type="button" onClick={() => handleChange(`hasMat${num}`, false)} className="text-slate-400"><X size={18}/></button>}</div><div className="p-4 grid grid-cols-1 gap-4"><div><label className={labelClass}>Tipo</label><select className={selectClass} value={formData[`mat${num}_type`]} onChange={e => handleChange(`mat${num}_type`, e.target.value)}><option value="">Seleccionar...</option>{MATERIAL_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}</select></div><div><label className={labelClass}>ID / Medidas</label><input className={inputClass} value={formData[`mat${num}_id`]} onChange={e => handleChange(`mat${num}_id`, e.target.value)} /></div><div className="grid grid-cols-2 gap-3"><div><label className={labelClass}>Consumo</label><input className={inputClass} value={formData[`mat${num}_consumption`]} onChange={e => handleChange(`mat${num}_consumption`, e.target.value)} /></div><div><label className={labelClass}>Precio</label><input className={inputClass} value={formData[`mat${num}_price`]} onChange={e => handleChange(`mat${num}_price`, e.target.value)} /></div></div><div><label className={labelClass}>Proveedor</label><input className={inputClass} value={formData[`mat${num}_supplier`]} onChange={e => handleChange(`mat${num}_supplier`, e.target.value)} /></div><div><label className={labelClass}>Notas</label><input className={inputClass} value={formData[`mat${num}_notes`]} onChange={e => handleChange(`mat${num}_notes`, e.target.value)} /></div></div></div>);})}{[1,2,3,4,5,6].map(num => {if ((num === 1 || formData[`hasMat${num}`]) && !formData[`hasMat${num+1}`]) {return <button key={num} type="button" onClick={() => handleChange(`hasMat${num+1}`, true)} className="w-full py-3 border-2 border-dashed border-blue-200 text-blue-600 rounded-lg font-bold mb-4 text-sm">+ Añadir Material</button>}return null;})}<div className="flex gap-3 mt-4 pt-4 border-t"><Button onClick={goToPrevTab} icon={ArrowLeft} variant="ghost" className="flex-1">Anterior</Button><Button onClick={goToNextTab} icon={ArrowRight} variant="secondary" className="flex-1">Siguiente</Button></div></Card>)}
-            {activeTab === 'maquinaria' && (<Card className="p-4 md:p-8"><SectionHeader title="Maquinaria" icon={Factory} /><div className="grid grid-cols-1 gap-6 mb-6"><div className="p-4 bg-purple-50 rounded-xl border border-purple-100"><label className="block text-xs font-bold text-purple-900 mb-3 uppercase">Calidad Percibida</label><div className="flex justify-between">{[1,2,3,4,5].map(v => (<button key={v} type="button" onClick={() => handleChange('quality_rating', v.toString())} className={`w-10 h-10 rounded-full font-bold shadow-sm ${formData.quality_rating === v.toString() ? 'bg-purple-600 text-white' : 'bg-white text-slate-600 border'}`}>{v}</button>))}</div></div><div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100"><label className="block text-xs font-bold text-emerald-900 mb-2 uppercase">¿Interés Sostenible?</label><select className="w-full p-2 border rounded bg-white" value={formData.sustainable_interest} onChange={e => handleChange('sustainable_interest', e.target.value)}><option>No</option><option>Sí</option></select></div></div><div className="bg-slate-50 p-4 rounded-xl border border-slate-200"><h4 className="font-bold text-slate-800 mb-4 text-sm">Máquina Principal</h4><div className="grid grid-cols-1 gap-4"><div><label className={labelClass}>Tipo</label><input className={inputClass} value={formData.mac1_type} onChange={e => handleChange('mac1_type', e.target.value)} /></div><div><label className={labelClass}>Marca</label><input className={inputClass} value={formData.mac1_brand} onChange={e => handleChange('mac1_brand', e.target.value)} /></div><div className="grid grid-cols-2 gap-3"><div><label className={labelClass}>Edad</label><select className={selectClass} value={formData.mac1_age} onChange={e => handleChange('mac1_age', e.target.value)}><option>Nueva</option><option>Media</option><option>Antigua</option></select></div><div><label className={labelClass}>Estado</label><select className={selectClass} value={formData.mac1_status} onChange={e => handleChange('mac1_status', e.target.value)}><option>Ok</option><option>Averías</option><option>Cambio</option></select></div></div></div></div><div className="flex gap-3 mt-6 pt-4 border-t"><Button onClick={goToPrevTab} icon={ArrowLeft} variant="ghost" className="flex-1">Anterior</Button><Button onClick={goToNextTab} icon={ArrowRight} variant="secondary" className="flex-1">Siguiente</Button></div></Card>)}
-            {activeTab === 'necesidades' && (<Card className="p-4 md:p-8 border-l-4 border-l-blue-600"><SectionHeader title="Necesidades" icon={Search} /><div className="grid grid-cols-1 gap-6"><div><label className="block text-sm font-bold text-slate-700 mb-3">Puntos de Dolor</label><div className="space-y-2">{['Ahorro de costes', 'Renovación maquinaria', 'Mejorar estabilidad', 'Servicio Técnico', 'Reducir plástico'].map(opt => (<label key={opt} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200"><input type="checkbox" checked={formData.pain_points?.includes(opt)} onChange={() => handleMultiSelect('pain_points', opt)} className="w-5 h-5 text-blue-600 rounded"/><span className="text-sm font-medium text-slate-700">{opt}</span></label>))}</div></div><div><label className={labelClass}>Presupuesto</label><select className={selectClass} value={formData.budget} onChange={e => handleChange('budget', e.target.value)}><option>Sin presupuesto fijo</option><option>Partida anual</option><option>Solo precio bajo</option></select></div></div><div className="flex gap-3 mt-6 pt-4 border-t"><Button onClick={goToPrevTab} icon={ArrowLeft} variant="ghost" className="flex-1">Anterior</Button><Button onClick={goToNextTab} icon={ArrowRight} variant="secondary" className="flex-1">Siguiente</Button></div></Card>)}
-            {activeTab === 'cierre' && (<Card className="p-4 md:p-8 border-l-4 border-l-red-500 bg-red-50/10"><SectionHeader title="Cierre" icon={Calendar} /><div className="grid grid-cols-1 gap-6 mb-6"><div><label className="block text-sm font-bold text-slate-700 mb-3">Interés real:</label><div className="grid grid-cols-1 gap-2">{['Visita Técnica', 'Oferta Materiales', 'Propuesta Maquinaria', 'Mantenimiento'].map(opt => (<label key={opt} className="flex items-center gap-2 p-3 bg-white rounded border border-slate-200 shadow-sm"><input type="checkbox" checked={formData.detected_interest?.includes(opt)} onChange={() => handleMultiSelect('detected_interest', opt)} className="text-red-600 rounded w-5 h-5"/> <span className="text-sm font-bold text-slate-700">{opt}</span></label>))}</div></div><div><label className={labelClass}>Resumen</label><textarea className={`${inputClass} h-24 resize-none`} placeholder="Resumen..." value={formData.solution_summary} onChange={e => handleChange('solution_summary', e.target.value)} /></div></div><div className="bg-white p-4 rounded-xl border border-red-200 shadow-sm"><div className="grid grid-cols-1 gap-4"><div><label className="block text-xs font-bold text-red-700 uppercase mb-1">ACCIÓN</label><select className="w-full p-3 border border-red-200 rounded-lg bg-red-50 font-bold" value={formData.next_action} onChange={e => handleChange('next_action', e.target.value)}><option>Llamada</option><option>Visita</option><option>Oferta</option><option>Cierre</option></select></div><div className="grid grid-cols-2 gap-3"><div><label className="block text-xs font-bold text-red-700 uppercase mb-1">FECHA</label><input type="date" required className="w-full p-3 border border-red-200 rounded-lg" value={formData.next_action_date} onChange={e => handleChange('next_action_date', e.target.value)} /></div><div><label className="block text-xs font-bold text-red-700 uppercase mb-1">HORA</label><input type="time" required className="w-full p-3 border border-red-200 rounded-lg" value={formData.next_action_time} onChange={e => handleChange('next_action_time', e.target.value)} /></div></div><div><label className="block text-xs font-bold text-red-700 uppercase mb-1">RESPONSABLE</label><input className="w-full p-3 border border-red-200 rounded-lg" value={formData.responsible} onChange={e => handleChange('responsible', e.target.value)} /></div></div></div><div className="flex flex-col-reverse gap-3 mt-6 pt-4 border-t border-red-200"><Button onClick={goToPrevTab} icon={ArrowLeft} variant="ghost" className="w-full">Anterior</Button><Button variant="primary" type="submit" icon={CheckCircle2} className="w-full py-4 text-lg bg-gradient-to-r from-red-600 to-red-700 border-none shadow-xl">FINALIZAR</Button></div></Card>)}
-        </form>
-      </div>
-    );
-  };
-
   const navBtnClass = (active: boolean) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${active ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`;
 
   // --- LOGIN SCREEN ---
@@ -407,7 +271,7 @@ export default function App() {
        <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 flex flex-col shadow-2xl shrink-0`}>
           <div className="p-6 border-b border-slate-800 flex items-center gap-3 bg-slate-950">
              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg"><Factory size={20} className="text-white" /></div>
-             <div className="min-w-0"><span className="text-xl font-bold tracking-tight block">CRM V6.0</span><span className="text-xs text-slate-500 truncate block">{session.user.email}</span></div>
+             <div className="min-w-0"><span className="text-xl font-bold tracking-tight block">CRM {APP_VERSION}</span><span className="text-xs text-slate-500 truncate block">{session.user.email}</span></div>
           </div>
           <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
              <button onClick={() => { setView('dashboard'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'dashboard')}><LayoutDashboard size={20}/> <span>Dashboard</span></button>
@@ -418,7 +282,6 @@ export default function App() {
           </nav>
           <div className="p-4 bg-slate-950 border-t border-slate-800 space-y-2">
              <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:bg-red-950/30 transition-colors"><LogOut size={20}/> <span>Cerrar Sesión</span></button>
-             <div className="text-center text-[10px] text-slate-600 pb-2">{APP_VERSION}</div>
           </div>
        </aside>
        <main className="flex-1 flex flex-col h-screen overflow-hidden relative w-full bg-slate-50">
@@ -429,7 +292,14 @@ export default function App() {
           <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 md:p-8 w-full scroll-smooth bg-slate-50">
             {view === 'dashboard' && <DashboardView />}
             {view === 'list' && <ListView />}
-            {view === 'form' && <FormView />}
+            {view === 'form' && (
+                <ContactForm 
+                    session={session}
+                    initialData={editingContact}
+                    onCancel={() => setView('list')}
+                    onSuccess={() => { fetchContacts(); setView('list'); }}
+                />
+            )}
             {view === 'admin' && <AdminView />}
           </div>
        </main>
