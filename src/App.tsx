@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 
 // --- CONSTANTES ---
+const APP_VERSION = "V5.4 - Final Stable"; 
+
 const MATERIAL_OPTIONS = [
   "00 - Fleje Manual", "00 - Fleje Automático", "00 - Fleje Poliéster (PET)", "00 - Fleje Acero",
   "01 - Film Estirable Manual", "01 - Film Estirable Automático", "01 - Film Macroperforado",
@@ -114,8 +116,10 @@ export default function App() {
   }
 
   async function handleLogout() {
+    setLoading(true);
     await supabase.auth.signOut();
-    setView('dashboard');
+    setSession(null);
+    window.location.reload(); 
   }
 
   async function fetchContacts() {
@@ -219,7 +223,10 @@ export default function App() {
     return (
       <div className="space-y-6 animate-in fade-in duration-500 w-full overflow-hidden pb-24">
         <div className="flex justify-between items-center px-1">
-             <h2 className="text-lg md:text-2xl font-bold text-slate-800">Hola, {userRole === 'admin' ? 'Admin' : userRole === 'manager' ? 'Jefe' : 'Comercial'}</h2>
+             <div>
+                <h2 className="text-lg md:text-2xl font-bold text-slate-800">Hola, {userRole === 'admin' ? 'Admin' : userRole === 'manager' ? 'Jefe' : 'Comercial'}</h2>
+                <p className="text-xs text-blue-600 font-bold">{APP_VERSION}</p>
+             </div>
              {userRole === 'sales' && <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-bold">Mis Datos</span>}
         </div>
         
@@ -411,10 +418,11 @@ export default function App() {
   if (!session) {
     return (
         <div className="h-screen w-full flex items-center justify-center bg-slate-100 p-4">
-            <Card className="max-w-md p-8 shadow-2xl w-full">
+            <Card className="max-w-md p-8 shadow-2xl w-11/12">
                 <div className="flex justify-center mb-6"><div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg"><Factory size={32}/></div></div>
                 <h1 className="text-2xl font-bold text-center text-slate-900 mb-2">CRM Industrial</h1>
-                <p className="text-center text-slate-500 mb-8">Inicia sesión para acceder</p>
+                <p className="text-center text-slate-500 font-bold mb-1">{APP_VERSION}</p>
+                <p className="text-center text-slate-400 text-xs mb-8">Inicia sesión para acceder</p>
                 <form onSubmit={handleLogin} className="space-y-4">
                     <div><label className={labelClass}>Email Corporativo</label><input type="email" required className={inputClass} value={email} onChange={e => setEmail(e.target.value)} placeholder="usuario@empresa.com" /></div>
                     <div><label className={labelClass}>Contraseña</label><input type="password" required className={inputClass} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" /></div>
@@ -427,11 +435,11 @@ export default function App() {
 
   // --- APP LAYOUT ---
   return (
-    <div className="flex h-screen bg-slate-100 font-sans text-slate-900 overflow-hidden w-full fixed inset-0">
+    <div className="flex h-screen bg-slate-100 font-sans text-slate-900 w-full fixed inset-0 max-w-[100vw] overflow-x-hidden">
        <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 flex flex-col shadow-2xl shrink-0`}>
           <div className="p-6 border-b border-slate-800 flex items-center gap-3 bg-slate-950">
              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg"><Factory size={20} className="text-white" /></div>
-             <div className="min-w-0"><span className="text-xl font-bold tracking-tight block">CRM V5.1</span><span className="text-xs text-slate-500 truncate block">{session.user.email}</span></div>
+             <div className="min-w-0"><span className="text-xl font-bold tracking-tight block">CRM V5.4</span><span className="text-xs text-slate-500 truncate block">{session.user.email}</span></div>
           </div>
           <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
              <button onClick={() => { setView('dashboard'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'dashboard')}><LayoutDashboard size={20}/> <span>Dashboard</span></button>
@@ -440,7 +448,10 @@ export default function App() {
              <div className="pt-6 pb-2 px-4"><p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Acciones</p></div>
              <button onClick={() => { setEditingContact(null); setView('form'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'form')}><UserPlus size={20}/> <span>Nuevo Diagnóstico</span></button>
           </nav>
-          <div className="p-4 bg-slate-950 border-t border-slate-800"><button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:bg-red-950/30 transition-colors"><LogOut size={20}/> <span>Cerrar Sesión</span></button></div>
+          <div className="p-4 bg-slate-950 border-t border-slate-800 space-y-2">
+             <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:bg-red-950/30 transition-colors"><LogOut size={20}/> <span>Cerrar Sesión</span></button>
+             <div className="text-center text-[10px] text-slate-600 pb-2">{APP_VERSION}</div> {/* <--- AQUI ESTÁ LA VERSIÓN EN EL MENÚ */}
+          </div>
        </aside>
        <main className="flex-1 flex flex-col h-screen overflow-hidden relative w-full bg-slate-50">
           <header className="bg-white border-b border-slate-200 p-3 flex items-center justify-between lg:hidden shadow-sm z-10 shrink-0 h-14">
