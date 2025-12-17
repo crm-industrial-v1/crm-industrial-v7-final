@@ -16,7 +16,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V7.7 - Rebranding Global"; 
+const APP_VERSION = "V7.7 - LogoMME"; 
 
 // --- ESTILOS COMUNES ---
 const inputClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm text-sm";
