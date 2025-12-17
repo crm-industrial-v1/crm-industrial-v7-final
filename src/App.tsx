@@ -7,8 +7,13 @@ import {
   ArrowLeft, Target, FileText, LogOut, Shield, UserCog
 } from 'lucide-react';
 
-// --- CONSTANTES ---
-const APP_VERSION = "V5.4 - Final Stable"; 
+// --- IMPORTACIONES DE COMPONENTES ---
+import { Card } from './components/ui/Card';
+import { Button } from './components/ui/Button';
+import { SectionHeader } from './components/ui/SectionHeader';
+
+// --- VERSIÓN ---
+const APP_VERSION = "V6.0 - Refactor UI Components"; 
 
 const MATERIAL_OPTIONS = [
   "00 - Fleje Manual", "00 - Fleje Automático", "00 - Fleje Poliéster (PET)", "00 - Fleje Acero",
@@ -26,43 +31,6 @@ const SECTORS = [
 const inputClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm text-sm";
 const labelClass = "block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1";
 const selectClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm appearance-none text-sm";
-
-// --- COMPONENTES UI ---
-const Card = ({ children, className = "" }: any) => (
-  <div className={`bg-white rounded-xl shadow-sm border border-slate-200 w-full ${className}`}>{children}</div>
-);
-
-const SectionHeader = ({ title, icon: Icon, subtitle }: any) => (
-  <div className="mt-6 md:mt-8 mb-4 md:mb-6 border-b border-slate-200 pb-3 w-full">
-    <div className="flex items-center gap-3 text-slate-800">
-      <div className="p-2 bg-blue-50 rounded-lg text-blue-600 shrink-0">
-        {Icon && <Icon size={22} className="md:w-6 md:h-6" />}
-      </div>
-      <div className="min-w-0">
-        <h3 className="text-lg md:text-xl font-bold uppercase tracking-tight truncate">{title}</h3>
-        {subtitle && <p className="text-xs md:text-sm text-slate-500 font-normal normal-case mt-0.5 truncate">{subtitle}</p>}
-      </div>
-    </div>
-  </div>
-);
-
-const Button = ({ children, onClick, variant = "primary", className = "", icon: Icon, type = "button", disabled = false }: any) => {
-  const variants: any = {
-    primary: "bg-blue-600 hover:bg-blue-700 text-white shadow-md disabled:bg-blue-300",
-    secondary: "bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-sm",
-    danger: "bg-red-50 hover:bg-red-100 text-red-600 border border-red-200",
-    ghost: "bg-transparent hover:bg-slate-100 text-slate-600",
-    success: "bg-emerald-600 hover:bg-emerald-700 text-white shadow-md"
-  };
-  return (
-    <button 
-      type={type} onClick={onClick} disabled={disabled}
-      className={`px-4 md:px-5 py-2.5 rounded-lg font-medium transition-all flex items-center justify-center gap-2 text-sm md:text-base whitespace-nowrap ${variants[variant]} ${className}`}
-    >
-      {Icon && <Icon size={18} className="shrink-0" />} {children}
-    </button>
-  );
-};
 
 // --- APP PRINCIPAL ---
 export default function App() {
@@ -225,7 +193,7 @@ export default function App() {
         <div className="flex justify-between items-center px-1">
              <div>
                 <h2 className="text-lg md:text-2xl font-bold text-slate-800">Hola, {userRole === 'admin' ? 'Admin' : userRole === 'manager' ? 'Jefe' : 'Comercial'}</h2>
-                <p className="text-xs text-blue-600 font-bold">{APP_VERSION}</p>
+                <p className="text-xs text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded inline-block mt-1">{APP_VERSION}</p>
              </div>
              {userRole === 'sales' && <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-bold">Mis Datos</span>}
         </div>
@@ -439,7 +407,7 @@ export default function App() {
        <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 flex flex-col shadow-2xl shrink-0`}>
           <div className="p-6 border-b border-slate-800 flex items-center gap-3 bg-slate-950">
              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg"><Factory size={20} className="text-white" /></div>
-             <div className="min-w-0"><span className="text-xl font-bold tracking-tight block">CRM V5.4</span><span className="text-xs text-slate-500 truncate block">{session.user.email}</span></div>
+             <div className="min-w-0"><span className="text-xl font-bold tracking-tight block">CRM V6.0</span><span className="text-xs text-slate-500 truncate block">{session.user.email}</span></div>
           </div>
           <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
              <button onClick={() => { setView('dashboard'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'dashboard')}><LayoutDashboard size={20}/> <span>Dashboard</span></button>
@@ -450,7 +418,7 @@ export default function App() {
           </nav>
           <div className="p-4 bg-slate-950 border-t border-slate-800 space-y-2">
              <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:bg-red-950/30 transition-colors"><LogOut size={20}/> <span>Cerrar Sesión</span></button>
-             <div className="text-center text-[10px] text-slate-600 pb-2">{APP_VERSION}</div> {/* <--- AQUI ESTÁ LA VERSIÓN EN EL MENÚ */}
+             <div className="text-center text-[10px] text-slate-600 pb-2">{APP_VERSION}</div>
           </div>
        </aside>
        <main className="flex-1 flex flex-col h-screen overflow-hidden relative w-full bg-slate-50">
