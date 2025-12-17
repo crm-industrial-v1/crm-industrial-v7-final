@@ -6,14 +6,14 @@ import {
   LogOut, Shield, UserCog, Menu, Loader2, Factory, Calendar
 } from 'lucide-react';
 
-// --- NUEVAS IMPORTACIONES ---
+// --- IMPORTACIONES ---
 import { Card } from './components/ui/Card';
 import { Button } from './components/ui/Button';
 import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
-// --- VERSIÓN (CAMBIADA AQUÍ) ---
-const APP_VERSION = "V7.2 - Final Mobile"; 
+// --- VERSIÓN ---
+const APP_VERSION = "V7.3 - Mobile Responsive Fix"; 
 
 // --- ESTILOS COMUNES ---
 const inputClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm text-sm";
@@ -289,9 +289,15 @@ export default function App() {
              <button onClick={() => setIsSidebarOpen(true)} className="text-slate-600 p-2 active:bg-slate-100 rounded"><Menu size={24} /></button>
              <span className="font-bold text-slate-800">CRM Industrial</span><div className="w-8"></div>
           </header>
-          <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 md:p-8 w-full scroll-smooth bg-slate-50">
-            {view === 'dashboard' && <DashboardView />}
-            {view === 'list' && <ListView />}
+          {/* AQUÍ HE QUITADO EL PADDING p-2 DEL MÓVIL PARA EVITAR SCROLL */}
+          <div className="flex-1 overflow-y-auto overflow-x-hidden p-0 md:p-8 w-full scroll-smooth bg-slate-50">
+            <div className="p-2 md:p-0"> {/* Padding interno para Dashboard y Listas */}
+                {view === 'dashboard' && <DashboardView />}
+                {view === 'list' && <ListView />}
+                {view === 'admin' && <AdminView />}
+            </div>
+            
+            {/* El formulario ya trae su propio padding interno */}
             {view === 'form' && (
                 <ContactForm 
                     session={session}
@@ -300,7 +306,6 @@ export default function App() {
                     onSuccess={() => { fetchContacts(); setView('list'); }}
                 />
             )}
-            {view === 'admin' && <AdminView />}
           </div>
        </main>
        {isSidebarOpen && <div className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)}></div>}
