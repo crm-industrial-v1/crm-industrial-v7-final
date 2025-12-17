@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, UserPlus, Search, Trash2, Edit, 
   Briefcase, Save, Calendar, Factory, Package, Menu, 
   Loader2, CheckCircle2, X, Clock, ArrowRight, 
-  ArrowLeft, Target, FileText
+  ArrowLeft, Target, FileText, LogOut, Shield, UserCog
 } from 'lucide-react';
 
 // --- CONSTANTES ---
@@ -64,6 +64,8 @@ const Button = ({ children, onClick, variant = "primary", className = "", icon: 
 
 // --- APP PRINCIPAL ---
 export default function App() {
+  const [session, setSession] = useState<any>(null);
+  const [userRole, setUserRole] = useState<string>('sales');
   const [view, setView] = useState('dashboard');
   const [contacts, setContacts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,17 +73,60 @@ export default function App() {
   const [editingContact, setEditingContact] = useState<any>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
 
+  // Estados para Login
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+
   useEffect(() => {
-    fetchContacts();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) fetchUserProfile(session.user.id);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) fetchUserProfile(session.user.id);
+      else { setContacts([]); setUserRole('sales'); }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (session) fetchContacts();
     const handleResize = () => setIsSidebarOpen(window.innerWidth >= 1024);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [session]);
+
+  async function fetchUserProfile(userId: string) {
+    const { data } = await supabase.from('profiles').select('role').eq('id', userId).single();
+    if (data) setUserRole(data.role);
+  }
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setAuthLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) alert(error.message);
+    setAuthLoading(false);
+  }
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    setView('dashboard');
+  }
 
   async function fetchContacts() {
     try {
       setLoading(true);
-      const { data, error } = await supabase.from('industrial_contacts').select('*').order('created_at', { ascending: false });
+      // Supabase RLS filtrará automáticamente según el rol del usuario
+      const { data, error } = await supabase
+        .from('industrial_contacts')
+        .select('*, profiles:user_id(email)')
+        .order('created_at', { ascending: false });
+        
       if (error) throw error;
       setContacts(data || []);
     } catch (error) {
@@ -95,10 +140,92 @@ export default function App() {
     if (!window.confirm('¿Borrar registro permanentemente?')) return;
     const { error } = await supabase.from('industrial_contacts').delete().eq('id', id);
     if (!error) fetchContacts();
+    else alert("No tienes permisos para borrar este registro.");
   }
 
-  // --- VISTAS ---
+  // --- VISTA ADMINISTRACIÓN ---
+  const AdminView = () => {
+    const [users, setUsers] = useState<any[]>([]);
+    const [newEmail, setNewEmail] = useState('');
+    const [newPass, setNewPass] = useState('');
+    const [newRole, setNewRole] = useState('sales');
 
+    useEffect(() => {
+        const fetchUsers = async () => {
+            const { data } = await supabase.from('profiles').select('*');
+            setUsers(data || []);
+        };
+        fetchUsers();
+    }, []);
+
+    const createUser = async (e: React.FormEvent) => {
+        e.preventDefault();
+        // Nota: Crear usuarios con Auth API requiere admin rights o hacerlo desde dashboard
+        // Simulamos creación simple. En prod usar supabase.auth.admin.createUser
+        const { data, error } = await supabase.auth.signUp({ email: newEmail, password: newPass, options: { data: { role: newRole } } });
+        if (error) {
+            alert('Error: ' + error.message);
+        } else if (data.user) {
+            // Insertar perfil manualmente si el trigger falla o no existe
+            await supabase.from('profiles').insert([{ id: data.user.id, email: newEmail, role: newRole }]);
+            alert('Usuario creado. IMPORTANTE: Confirma el email o desactiva confirmación en Supabase.');
+            setNewEmail(''); setNewPass('');
+            // Refrescar lista
+            const { data: newData } = await supabase.from('profiles').select('*');
+            setUsers(newData || []);
+        }
+    };
+
+    const updateUserRole = async (id: string, role: string) => {
+        const { error } = await supabase.from('profiles').update({ role }).eq('id', id);
+        if (!error) {
+             setUsers(users.map(u => u.id === id ? { ...u, role } : u));
+             alert('Rol actualizado');
+        } else {
+            alert('Error al actualizar rol');
+        }
+    };
+
+    return (
+        <div className="space-y-6 animate-in fade-in">
+             <Card className="p-6 border-l-4 border-l-purple-600">
+                <SectionHeader title="Gestión de Usuarios" icon={Shield} subtitle="Crear usuarios y asignar roles" />
+                
+                <form onSubmit={createUser} className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div className="md:col-span-1"><label className={labelClass}>Email Nuevo Usuario</label><input type="email" required className={inputClass} value={newEmail} onChange={e => setNewEmail(e.target.value)} /></div>
+                    <div className="md:col-span-1"><label className={labelClass}>Contraseña</label><input type="text" required className={inputClass} value={newPass} onChange={e => setNewPass(e.target.value)} /></div>
+                    <div className="md:col-span-1"><label className={labelClass}>Rol Inicial</label><select className={selectClass} value={newRole} onChange={e => setNewRole(e.target.value)}><option value="sales">Comercial</option><option value="manager">Jefe Ventas</option><option value="admin">Administrador</option></select></div>
+                    <Button type="submit" icon={UserPlus} className="w-full">Crear Usuario</Button>
+                </form>
+
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="bg-slate-100 text-slate-500 uppercase font-bold">
+                            <tr><th className="p-3">Email</th><th className="p-3">Rol Actual</th><th className="p-3">Acciones</th></tr>
+                        </thead>
+                        <tbody>
+                            {users.map(u => (
+                                <tr key={u.id} className="border-b">
+                                    <td className="p-3 font-medium">{u.email}</td>
+                                    <td className="p-3">
+                                        <select className="p-2 border rounded bg-white" value={u.role} onChange={(e) => updateUserRole(u.id, e.target.value)}>
+                                            <option value="sales">Comercial</option>
+                                            <option value="manager">Jefe Ventas</option>
+                                            <option value="admin">Administrador</option>
+                                        </select>
+                                    </td>
+                                    <td className="p-3 text-slate-400">ID: {u.id.slice(0,8)}...</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+             </Card>
+        </div>
+    );
+  };
+
+  // --- VISTAS EXISTING ---
   const DashboardView = () => {
     const total = contacts.length;
     const clients = contacts.filter(c => c.sap_status === 'Cliente SAP').length;
@@ -108,7 +235,11 @@ export default function App() {
 
     return (
       <div className="space-y-6 animate-in fade-in duration-500 w-full overflow-hidden">
-        <h2 className="text-xl md:text-2xl font-bold text-slate-800 px-1">Panel de Control</h2>
+        <div className="flex justify-between items-center">
+             <h2 className="text-xl md:text-2xl font-bold text-slate-800 px-1">Hola, {userRole === 'admin' ? 'Administrador' : userRole === 'manager' ? 'Jefe de Ventas' : 'Comercial'}</h2>
+             {userRole === 'sales' && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-bold">Solo mis datos</span>}
+        </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 w-full">
           <Card className="p-4 border-l-4 border-l-blue-600 flex justify-between items-center">
              <div><p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Total Registros</p><h3 className="text-2xl font-bold text-slate-900 mt-1">{total}</h3></div>
@@ -155,7 +286,6 @@ export default function App() {
                 <UserPlus size={40} className="text-blue-600" />
              </div>
              <h3 className="font-bold text-lg text-slate-800 mb-2">Comenzar Nuevo Trabajo</h3>
-             <p className="text-sm text-slate-500 mb-6 max-w-xs mx-auto">Inicia un nuevo diagnóstico comercial, registra materiales y planifica el seguimiento.</p>
              <Button onClick={() => { setEditingContact(null); setView('form'); }} icon={UserPlus} className="px-6 py-3 text-base shadow-xl shadow-blue-200 w-full md:w-auto">
                Nuevo Diagnóstico
              </Button>
@@ -176,7 +306,9 @@ export default function App() {
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
            <div className="w-full md:w-auto">
              <h2 className="text-xl font-bold text-slate-800">Base de Datos</h2>
-             <p className="text-sm text-slate-500">Gestión de fichas comerciales</p>
+             <p className="text-sm text-slate-500">
+                {userRole === 'sales' ? 'Mis Fichas' : 'Todas las Fichas (Global)'}
+             </p>
            </div>
            <div className="relative w-full md:w-80">
              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -196,12 +328,14 @@ export default function App() {
                     </div>
                     <div className="flex flex-col gap-1 text-sm text-slate-600">
                       <span className="flex items-center gap-2 truncate"><Users size={14} className="text-slate-400 shrink-0"/> {c.contact_person || 'Sin contacto'}</span>
-                      <span className="flex items-center gap-2 truncate"><Factory size={14} className="text-slate-400 shrink-0"/> {c.sector || '-'}</span>
+                      <span className="flex items-center gap-2 truncate"><Briefcase size={14} className="text-slate-400 shrink-0"/> <span className="text-slate-500 text-xs">Titular:</span> {c.profiles?.email || 'Desconocido'}</span>
                     </div>
                   </div>
                   <div className="flex flex-col gap-2 shrink-0">
                     <button onClick={() => { setEditingContact(c); setView('form'); }} className="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 rounded-lg"><Edit size={18}/></button>
-                    <button onClick={() => handleDelete(c.id)} className="p-2 text-slate-400 hover:text-red-600 bg-slate-50 rounded-lg"><Trash2 size={18}/></button>
+                    {(userRole === 'admin' || c.user_id === session.user.id) && (
+                        <button onClick={() => handleDelete(c.id)} className="p-2 text-slate-400 hover:text-red-600 bg-slate-50 rounded-lg"><Trash2 size={18}/></button>
+                    )}
                   </div>
                 </div>
               </Card>
@@ -268,9 +402,12 @@ export default function App() {
       setSaving(true);
       const payload: any = { ...formData };
       for(let i=2; i<=7; i++) delete payload[`hasMat${i}`];
-      delete payload.id; delete payload.created_at;
+      delete payload.id; delete payload.created_at; delete payload.profiles; // Limpiar relaciones
       if (!payload.next_action_date) payload.next_action_date = null;
       if (!payload.next_action_time) payload.next_action_time = null;
+
+      // Asegurar el dueño del dato si es nuevo
+      if (!editingContact) payload.user_id = session.user.id;
 
       let error;
       try {
@@ -499,21 +636,48 @@ export default function App() {
 
   const navBtnClass = (active: boolean) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${active ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`;
 
+  // --- LOGIN SCREEN ---
+  if (!session) {
+    return (
+        <div className="h-screen w-full flex items-center justify-center bg-slate-100 p-4">
+            <Card className="max-w-md p-8 shadow-2xl">
+                <div className="flex justify-center mb-6"><div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg"><Factory size={32}/></div></div>
+                <h1 className="text-2xl font-bold text-center text-slate-900 mb-2">CRM Industrial</h1>
+                <p className="text-center text-slate-500 mb-8">Inicia sesión para acceder</p>
+                <form onSubmit={handleLogin} className="space-y-4">
+                    <div><label className={labelClass}>Email Corporativo</label><input type="email" required className={inputClass} value={email} onChange={e => setEmail(e.target.value)} placeholder="usuario@empresa.com" /></div>
+                    <div><label className={labelClass}>Contraseña</label><input type="password" required className={inputClass} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" /></div>
+                    <Button type="submit" className="w-full py-3" disabled={authLoading}>{authLoading ? <Loader2 className="animate-spin"/> : 'Entrar al CRM'}</Button>
+                </form>
+            </Card>
+        </div>
+    );
+  }
+
+  // --- APP LAYOUT ---
   return (
     <div className="flex h-screen bg-slate-100 font-sans text-slate-900 overflow-hidden w-full fixed inset-0">
        <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 flex flex-col shadow-2xl shrink-0`}>
           <div className="p-6 border-b border-slate-800 flex items-center gap-3 bg-slate-950">
              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg"><Factory size={20} className="text-white" /></div>
-             <span className="text-xl font-bold tracking-tight">CRM V3</span>
+             <div className="min-w-0"><span className="text-xl font-bold tracking-tight block">CRM V5</span><span className="text-xs text-slate-500 truncate block">{session.user.email}</span></div>
           </div>
           <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
              <button onClick={() => { setView('dashboard'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'dashboard')}><LayoutDashboard size={20}/> <span>Dashboard</span></button>
              <button onClick={() => { setView('list'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'list')}><Users size={20}/> <span>Base de Datos</span></button>
-             <div className="pt-6 pb-2 px-4"><p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Acciones Rápidas</p></div>
+             
+             {userRole === 'admin' && (
+                <>
+                <div className="pt-4 pb-2 px-4"><p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Admin</p></div>
+                <button onClick={() => { setView('admin'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'admin')}><UserCog size={20}/> <span>Gestión Usuarios</span></button>
+                </>
+             )}
+
+             <div className="pt-6 pb-2 px-4"><p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Acciones</p></div>
              <button onClick={() => { setEditingContact(null); setView('form'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'form')}><UserPlus size={20}/> <span>Nuevo Diagnóstico</span></button>
           </nav>
-          <div className="p-4 bg-slate-950 text-xs text-slate-500 text-center border-t border-slate-800">
-             v4.1 - FINAL CLEAN
+          <div className="p-4 bg-slate-950 border-t border-slate-800">
+             <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:bg-red-950/30 transition-colors"><LogOut size={20}/> <span>Cerrar Sesión</span></button>
           </div>
        </aside>
 
@@ -526,6 +690,7 @@ export default function App() {
             {view === 'dashboard' && <DashboardView />}
             {view === 'list' && <ListView />}
             {view === 'form' && <FormView />}
+            {view === 'admin' && <AdminView />}
           </div>
        </main>
        {isSidebarOpen && <div className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)}></div>}
