@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 
 // --- CONSTANTES ---
-const APP_VERSION = "V5.1 Usuarios y Grid Movil"; // <--- AQUÍ ESTÁ TU MARCA DE VERSIÓN
+const APP_VERSION = "V5.2 - Usuarios y Grid Movil"; // <--- VERSIÓN VISIBLE
 
 const MATERIAL_OPTIONS = [
   "00 - Fleje Manual", "00 - Fleje Automático", "00 - Fleje Poliéster (PET)", "00 - Fleje Acero",
@@ -419,7 +419,8 @@ export default function App() {
             <Card className="max-w-md p-8 shadow-2xl w-full">
                 <div className="flex justify-center mb-6"><div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg"><Factory size={32}/></div></div>
                 <h1 className="text-2xl font-bold text-center text-slate-900 mb-2">CRM Industrial</h1>
-                <p className="text-center text-slate-500 mb-8">Inicia sesión para acceder</p>
+                <p className="text-center text-slate-500 font-bold mb-1">{APP_VERSION}</p> {/* <--- AQUÍ AÑADIDO */}
+                <p className="text-center text-slate-400 text-xs mb-8">Inicia sesión para acceder</p>
                 <form onSubmit={handleLogin} className="space-y-4">
                     <div><label className={labelClass}>Email Corporativo</label><input type="email" required className={inputClass} value={email} onChange={e => setEmail(e.target.value)} placeholder="usuario@empresa.com" /></div>
                     <div><label className={labelClass}>Contraseña</label><input type="password" required className={inputClass} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" /></div>
@@ -436,7 +437,7 @@ export default function App() {
        <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 flex flex-col shadow-2xl shrink-0`}>
           <div className="p-6 border-b border-slate-800 flex items-center gap-3 bg-slate-950">
              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg"><Factory size={20} className="text-white" /></div>
-             <div className="min-w-0"><span className="text-xl font-bold tracking-tight block">CRM V5.1</span><span className="text-xs text-slate-500 truncate block">{session.user.email}</span></div>
+             <div className="min-w-0"><span className="text-xl font-bold tracking-tight block">CRM V5.2</span><span className="text-xs text-slate-500 truncate block">{session.user.email}</span></div>
           </div>
           <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
              <button onClick={() => { setView('dashboard'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'dashboard')}><LayoutDashboard size={20}/> <span>Dashboard</span></button>
