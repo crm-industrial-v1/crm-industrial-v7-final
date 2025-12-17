@@ -91,7 +91,6 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
             setMaterials(data);
         } else {
             // Si no hay materiales en la tabla nueva (migración), intentamos leer los antiguos del initialData
-            // (Esta lógica es opcional, pero ayuda a no perder datos visualmente si acabas de cambiar la DB)
             const oldMats = [];
             for(let i=1; i<=7; i++) {
                 if (initialData[`mat${i}_type`]) {
