@@ -13,99 +13,17 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ---
-const APP_VERSION = "V7.5.1 - Build Fix"; 
+const APP_VERSION = "V7.6 - Input Focus Fix"; 
 
 // --- ESTILOS COMUNES ---
 const inputClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm text-sm";
 const labelClass = "block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1";
 const selectClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm appearance-none text-sm";
 
-// --- APP PRINCIPAL ---
-export default function App() {
-  const [session, setSession] = useState<any>(null);
-  const [userRole, setUserRole] = useState<string>('sales');
-  const [view, setView] = useState('dashboard');
-  const [contacts, setContacts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [editingContact, setEditingContact] = useState<any>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
+// --- COMPONENTES AUXILIARES (DEFINIDOS FUERA PARA EVITAR PÉRDIDA DE FOCO) ---
 
-  // Estados para Login
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [authLoading, setAuthLoading] = useState(false);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) fetchUserProfile(session.user.id);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) fetchUserProfile(session.user.id);
-      else { setContacts([]); setUserRole('sales'); }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (session) fetchContacts();
-    const handleResize = () => setIsSidebarOpen(window.innerWidth >= 1024);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [session]);
-
-  async function fetchUserProfile(userId: string) {
-    const { data } = await supabase.from('profiles').select('role').eq('id', userId).single();
-    if (data) setUserRole(data.role);
-  }
-
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setAuthLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) alert(error.message);
-    setAuthLoading(false);
-  }
-
-  async function handleLogout() {
-    setLoading(true);
-    await supabase.auth.signOut();
-    setSession(null);
-    window.location.reload(); 
-  }
-
-  async function fetchContacts() {
-    try {
-      setLoading(true);
-      // Traemos TODO. Luego filtraremos en memoria según el rol para velocidad de UI.
-      // En una app real muy grande, esto se filtra en el SELECT de supabase con RLS.
-      const { data, error } = await supabase
-        .from('industrial_contacts')
-        .select('*, profiles:user_id(email)')
-        .order('created_at', { ascending: false });
-        
-      if (error) throw error;
-      setContacts(data || []);
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleDelete(id: string) {
-    if (!window.confirm('¿Borrar registro permanentemente?')) return;
-    const { error } = await supabase.from('industrial_contacts').delete().eq('id', id);
-    if (!error) fetchContacts();
-    else alert("No tienes permisos para borrar este registro.");
-  }
-
-  // --- VISTA ADMINISTRACIÓN ---
-  const AdminView = () => {
+// 1. VISTA ADMINISTRACIÓN
+const AdminView = () => {
     const [users, setUsers] = useState<any[]>([]);
     const [newEmail, setNewEmail] = useState('');
     const [newPass, setNewPass] = useState('');
@@ -168,22 +86,19 @@ export default function App() {
              </Card>
         </div>
     );
-  };
+};
 
-  // --- DASHBOARD ---
-  const DashboardView = () => {
-    // Lógica de visualización en Dashboard:
-    // Comercial: Solo sus datos.
-    // Jefe/Admin: Datos globales.
+// 2. VISTA DASHBOARD
+const DashboardView = ({ contacts, userRole, session, setEditingContact, setView }: any) => {
     const relevantContacts = userRole === 'sales' 
-        ? contacts.filter(c => c.user_id === session.user.id) 
+        ? contacts.filter((c: any) => c.user_id === session.user.id) 
         : contacts;
 
     const total = relevantContacts.length;
-    const clients = relevantContacts.filter(c => c.sap_status === 'Cliente SAP').length;
-    const leads = relevantContacts.filter(c => ['Lead SAP', 'Nuevo Prospecto'].includes(c.sap_status)).length;
+    const clients = relevantContacts.filter((c: any) => c.sap_status === 'Cliente SAP').length;
+    const leads = relevantContacts.filter((c: any) => ['Lead SAP', 'Nuevo Prospecto'].includes(c.sap_status)).length;
     const today = new Date().toISOString().split('T')[0];
-    const pending = relevantContacts.filter(c => c.next_action_date && c.next_action_date <= today).length;
+    const pending = relevantContacts.filter((c: any) => c.next_action_date && c.next_action_date <= today).length;
 
     return (
       <div className="space-y-6 animate-in fade-in duration-500 w-full overflow-hidden pb-24">
@@ -207,7 +122,7 @@ export default function App() {
           <Card className="p-4 md:p-6 h-full">
             <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-slate-800"><Calendar className="text-blue-600"/> Agenda</h3>
             <div className="space-y-3">
-               {relevantContacts.filter(c => c.next_action_date).sort((a,b) => new Date(a.next_action_date).getTime() - new Date(b.next_action_date).getTime()).slice(0,5).map(c => (
+               {relevantContacts.filter((c: any) => c.next_action_date).sort((a: any, b: any) => new Date(a.next_action_date).getTime() - new Date(b.next_action_date).getTime()).slice(0,5).map((c: any) => (
                  <div key={c.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100 shadow-sm active:bg-blue-50 transition-colors cursor-pointer" onClick={() => { setEditingContact(c); setView('form'); }}>
                    <div className="min-w-0"><span className="font-bold text-slate-800 text-sm block truncate">{c.next_action}</span><p className="text-xs text-slate-500 mt-1 flex items-center gap-1 truncate"><FileText size={12}/> {c.fiscal_name}</p></div>
                    <div className="text-right shrink-0 ml-2"><p className={`text-xs font-bold ${c.next_action_date <= today ? 'text-red-600' : 'text-blue-600'}`}>{c.next_action_date}</p><p className="text-xs text-slate-400">{c.next_action_time?.slice(0,5)}</p></div>
@@ -224,40 +139,34 @@ export default function App() {
         </div>
       </div>
     );
-  };
+};
 
-  // --- LISTA ---
-  const ListView = () => {
-    // Estado local para el filtro de vista (Solo visible para Managers/Admins)
-    // 'all' = Todos, 'mine' = Míos, uuid = Usuario específico
+// 3. VISTA LISTA
+const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, session, setEditingContact, setView, handleDelete }: any) => {
     const [viewFilter, setViewFilter] = useState<string>('all'); 
     
-    // 1. Filtrado por ROL y SELECCIÓN
+    // Filtrado por ROL y SELECCIÓN
     let displayContacts = contacts;
 
     if (userRole === 'sales') {
-        // COMERCIAL: Forzamos ver solo los suyos
-        displayContacts = contacts.filter(c => c.user_id === session.user.id);
+        displayContacts = contacts.filter((c: any) => c.user_id === session.user.id);
     } else {
-        // JEFE / ADMIN: Filtramos según lo que elija en el desplegable
         if (viewFilter === 'mine') {
-            displayContacts = contacts.filter(c => c.user_id === session.user.id);
+            displayContacts = contacts.filter((c: any) => c.user_id === session.user.id);
         } else if (viewFilter !== 'all') {
-            displayContacts = contacts.filter(c => c.user_id === viewFilter);
+            displayContacts = contacts.filter((c: any) => c.user_id === viewFilter);
         }
-        // Si es 'all', no filtramos nada extra
     }
 
-    // 2. Filtrado por BUSCADOR (Texto)
-    const filtered = displayContacts.filter(c => 
+    // Filtrado por BUSCADOR
+    const filtered = displayContacts.filter((c: any) => 
         c.fiscal_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
         c.contact_person?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // Obtener lista única de comerciales para el desplegable (Solo Jefes)
-    const uniqueSalesUsers = Array.from(new Set(contacts.map(c => c.user_id)))
+    const uniqueSalesUsers = Array.from(new Set(contacts.map((c: any) => c.user_id)))
         .map(id => {
-            const contact = contacts.find(c => c.user_id === id);
+            const contact = contacts.find((c: any) => c.user_id === id);
             return { id, email: contact?.profiles?.email || 'Desconocido' };
         })
         .filter(u => u.email !== 'Desconocido');
@@ -275,7 +184,6 @@ export default function App() {
                    </p>
                </div>
 
-               {/* BARRA DE HERRAMIENTAS PARA JEFES/ADMINS */}
                {(userRole === 'manager' || userRole === 'admin') && (
                    <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200 w-full md:w-auto overflow-x-auto">
                        <button onClick={() => setViewFilter('all')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors whitespace-nowrap ${viewFilter === 'all' ? 'bg-white text-blue-600 shadow-sm border' : 'text-slate-500 hover:text-slate-700'}`}>Todos</button>
@@ -287,7 +195,7 @@ export default function App() {
                             className="bg-transparent text-xs font-bold text-slate-600 outline-none min-w-[120px]"
                        >
                            <option value="">Filtrar por usuario...</option>
-                           {uniqueSalesUsers.map(u => (
+                           {uniqueSalesUsers.map((u: any) => (
                                <option key={u.id} value={u.id}>{u.email}</option>
                            ))}
                        </select>
@@ -298,11 +206,11 @@ export default function App() {
            <div className="relative w-full"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} /><input type="text" placeholder="Buscar empresa o contacto..." className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
         </div>
 
-        {/* LISTADO DE TARJETAS */}
+        {/* LISTADO */}
         {loading ? <div className="text-center p-20"><Loader2 className="animate-spin mx-auto text-blue-600 mb-4" size={32}/><p className="text-slate-500">Cargando...</p></div> : (
           <div className="grid gap-3 w-full">
             {filtered.length === 0 && <div className="text-center py-10 text-slate-400">No se encontraron resultados.</div>}
-            {filtered.map(c => (
+            {filtered.map((c: any) => (
               <Card key={c.id} className="p-4 hover:shadow-lg transition-all border border-slate-200">
                 <div className="flex justify-between items-start gap-3">
                   <div className="flex-1 min-w-0">
@@ -310,7 +218,6 @@ export default function App() {
                         <h3 className="font-bold text-base text-slate-900 truncate">{c.fiscal_name}</h3>
                         <div className="flex gap-2">
                             <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border w-fit ${c.sap_status === 'Cliente SAP' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>{c.sap_status}</span>
-                            {/* Mostrar dueño de la ficha solo si soy Jefe/Admin */}
                             {(userRole !== 'sales' && c.profiles?.email) && (
                                 <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border bg-slate-100 text-slate-500 border-slate-200 flex items-center gap-1 max-w-[120px] truncate">
                                     <UserCog size={10}/> {c.profiles.email.split('@')[0]}
@@ -328,7 +235,89 @@ export default function App() {
         )}
       </div>
     );
-  };
+};
+
+// --- APP PRINCIPAL ---
+export default function App() {
+  const [session, setSession] = useState<any>(null);
+  const [userRole, setUserRole] = useState<string>('sales');
+  const [view, setView] = useState('dashboard');
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [editingContact, setEditingContact] = useState<any>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
+
+  // Estados para Login
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) fetchUserProfile(session.user.id);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) fetchUserProfile(session.user.id);
+      else { setContacts([]); setUserRole('sales'); }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (session) fetchContacts();
+    const handleResize = () => setIsSidebarOpen(window.innerWidth >= 1024);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [session]);
+
+  async function fetchUserProfile(userId: string) {
+    const { data } = await supabase.from('profiles').select('role').eq('id', userId).single();
+    if (data) setUserRole(data.role);
+  }
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setAuthLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) alert(error.message);
+    setAuthLoading(false);
+  }
+
+  async function handleLogout() {
+    setLoading(true);
+    await supabase.auth.signOut();
+    setSession(null);
+    window.location.reload(); 
+  }
+
+  async function fetchContacts() {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('industrial_contacts')
+        .select('*, profiles:user_id(email)')
+        .order('created_at', { ascending: false });
+        
+      if (error) throw error;
+      setContacts(data || []);
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!window.confirm('¿Borrar registro permanentemente?')) return;
+    const { error } = await supabase.from('industrial_contacts').delete().eq('id', id);
+    if (!error) fetchContacts();
+    else alert("No tienes permisos para borrar este registro.");
+  }
 
   const navBtnClass = (active: boolean) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${active ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`;
 
@@ -375,15 +364,28 @@ export default function App() {
              <button onClick={() => setIsSidebarOpen(true)} className="text-slate-600 p-2 active:bg-slate-100 rounded"><Menu size={24} /></button>
              <span className="font-bold text-slate-800">CRM Industrial</span><div className="w-8"></div>
           </header>
-          {/* AQUÍ HE APLICADO EL CAMBIO DE PADDING: p-1 para móvil y pb-20 extra */}
+          
           <div className="flex-1 overflow-y-auto overflow-x-hidden p-0 md:p-8 w-full scroll-smooth bg-slate-50">
-            <div className="p-1 md:p-0 pb-20"> {/* Padding interno para Dashboard y Listas */}
-                {view === 'dashboard' && <DashboardView />}
-                {view === 'list' && <ListView />}
+            <div className="p-1 md:p-0 pb-20"> 
+                {view === 'dashboard' && <DashboardView contacts={contacts} userRole={userRole} session={session} setEditingContact={setEditingContact} setView={setView} />}
+                
+                {view === 'list' && (
+                    <ListView 
+                        contacts={contacts} 
+                        loading={loading} 
+                        searchTerm={searchTerm} 
+                        setSearchTerm={setSearchTerm} 
+                        userRole={userRole} 
+                        session={session} 
+                        setEditingContact={setEditingContact} 
+                        setView={setView} 
+                        handleDelete={handleDelete}
+                    />
+                )}
+
                 {view === 'admin' && <AdminView />}
             </div>
             
-            {/* El formulario ya trae su propio padding interno */}
             {view === 'form' && (
                 <ContactForm 
                     session={session}
