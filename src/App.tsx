@@ -3,8 +3,11 @@ import { supabase } from './lib/supabase';
 import { 
   LayoutDashboard, Users, UserPlus, Search, Trash2, Edit, 
   Briefcase, CheckCircle2, Clock, Target, FileText, 
-  LogOut, Shield, UserCog, Menu, Loader2, Factory, Calendar
+  LogOut, Shield, UserCog, Menu, Loader2, Calendar
 } from 'lucide-react';
+
+// --- IMPORTAMOS EL NUEVO LOGO ---
+import logoM from './assets/m-logo.png';
 
 // --- IMPORTACIONES ---
 import { Card } from './components/ui/Card';
@@ -12,15 +15,15 @@ import { Button } from './components/ui/Button';
 import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
-// --- VERSIÓN ---
-const APP_VERSION = "V7.6 - Input Focus Fix"; 
+// --- VERSIÓN ACTUALIZADA ---
+const APP_VERSION = "V7.7 - Rebranding Global"; 
 
 // --- ESTILOS COMUNES ---
 const inputClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm text-sm";
 const labelClass = "block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1";
 const selectClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm appearance-none text-sm";
 
-// --- COMPONENTES AUXILIARES (DEFINIDOS FUERA PARA EVITAR PÉRDIDA DE FOCO) ---
+// --- COMPONENTES AUXILIARES ---
 
 // 1. VISTA ADMINISTRACIÓN
 const AdminView = () => {
@@ -132,9 +135,10 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
             </div>
           </Card>
           <Card className="p-6 flex flex-col justify-center items-center text-center bg-gradient-to-br from-white to-slate-50">
-             <div className="bg-white p-4 rounded-full shadow-lg mb-4"><UserPlus size={40} className="text-blue-600" /></div>
+             {/* --- LOGO EN DASHBOARD --- */}
+             <div className="p-4 mb-4"><img src={logoM} alt="Logo" className="w-16 h-16 object-contain opacity-90" /></div>
              <h3 className="font-bold text-lg text-slate-800 mb-2">Comenzar Trabajo</h3>
-             <Button onClick={() => { setEditingContact(null); setView('form'); }} icon={UserPlus} className="px-6 py-3 shadow-xl w-full md:w-auto">Nuevo Diagnóstico</Button>
+             <Button onClick={() => { setEditingContact(null); setView('form'); }} icon={UserPlus} className="px-6 py-3 shadow-xl w-full md:w-auto">Nuevo Cuestionario</Button>
           </Card>
         </div>
       </div>
@@ -145,7 +149,6 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
 const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, session, setEditingContact, setView, handleDelete }: any) => {
     const [viewFilter, setViewFilter] = useState<string>('all'); 
     
-    // Filtrado por ROL y SELECCIÓN
     let displayContacts = contacts;
 
     if (userRole === 'sales') {
@@ -158,7 +161,6 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
         }
     }
 
-    // Filtrado por BUSCADOR
     const filtered = displayContacts.filter((c: any) => 
         c.fiscal_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
         c.contact_person?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -174,7 +176,6 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
     return (
       <div className="space-y-4 animate-in fade-in duration-500 pb-24 w-full overflow-hidden">
         
-        {/* CABECERA Y FILTROS */}
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                <div>
@@ -206,7 +207,6 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
            <div className="relative w-full"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} /><input type="text" placeholder="Buscar empresa o contacto..." className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
         </div>
 
-        {/* LISTADO */}
         {loading ? <div className="text-center p-20"><Loader2 className="animate-spin mx-auto text-blue-600 mb-4" size={32}/><p className="text-slate-500">Cargando...</p></div> : (
           <div className="grid gap-3 w-full">
             {filtered.length === 0 && <div className="text-center py-10 text-slate-400">No se encontraron resultados.</div>}
@@ -248,7 +248,6 @@ export default function App() {
   const [editingContact, setEditingContact] = useState<any>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
 
-  // Estados para Login
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
@@ -321,19 +320,22 @@ export default function App() {
 
   const navBtnClass = (active: boolean) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${active ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`;
 
-  // --- LOGIN SCREEN ---
+  // --- LOGIN SCREEN (MODIFICADO) ---
   if (!session) {
     return (
         <div className="h-screen w-full flex items-center justify-center bg-slate-100 p-4">
             <Card className="max-w-md p-8 shadow-2xl w-11/12">
-                <div className="flex justify-center mb-6"><div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg"><Factory size={32}/></div></div>
-                <h1 className="text-2xl font-bold text-center text-slate-900 mb-2">CRM Industrial</h1>
+                <div className="flex justify-center mb-6">
+                    {/* LOGO M */}
+                    <img src={logoM} alt="Logo" className="w-20 h-20 object-contain" />
+                </div>
+                <h1 className="text-2xl font-bold text-center text-slate-900 mb-2">Cuestionario de Ventas</h1>
                 <p className="text-center text-slate-500 font-bold mb-1">{APP_VERSION}</p>
                 <p className="text-center text-slate-400 text-xs mb-8">Inicia sesión para acceder</p>
                 <form onSubmit={handleLogin} className="space-y-4">
                     <div><label className={labelClass}>Email Corporativo</label><input type="email" required className={inputClass} value={email} onChange={e => setEmail(e.target.value)} placeholder="usuario@empresa.com" /></div>
                     <div><label className={labelClass}>Contraseña</label><input type="password" required className={inputClass} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" /></div>
-                    <Button type="submit" className="w-full py-3" disabled={authLoading}>{authLoading ? <Loader2 className="animate-spin"/> : 'Entrar al CRM'}</Button>
+                    <Button type="submit" className="w-full py-3" disabled={authLoading}>{authLoading ? <Loader2 className="animate-spin"/> : 'Entrar'}</Button>
                 </form>
             </Card>
         </div>
@@ -344,25 +346,31 @@ export default function App() {
   return (
     <div className="flex h-screen bg-slate-100 font-sans text-slate-900 w-full fixed inset-0 max-w-[100vw] overflow-x-hidden">
        <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 flex flex-col shadow-2xl shrink-0`}>
+          {/* HEADER BARRA LATERAL (MODIFICADO) */}
           <div className="p-6 border-b border-slate-800 flex items-center gap-3 bg-slate-950">
-             <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg"><Factory size={20} className="text-white" /></div>
-             <div className="min-w-0"><span className="text-xl font-bold tracking-tight block">CRM {APP_VERSION}</span><span className="text-xs text-slate-500 truncate block">{session.user.email}</span></div>
+             <img src={logoM} alt="Logo" className="w-10 h-10 object-contain brightness-0 invert" />
+             <div className="min-w-0">
+                <span className="text-lg font-bold tracking-tight block truncate">Cuestionario de Ventas</span>
+                <span className="text-[10px] block opacity-70">{APP_VERSION}</span>
+             </div>
           </div>
           <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
              <button onClick={() => { setView('dashboard'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'dashboard')}><LayoutDashboard size={20}/> <span>Dashboard</span></button>
              <button onClick={() => { setView('list'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'list')}><Users size={20}/> <span>Base de Datos</span></button>
              {userRole === 'admin' && (<><div className="pt-4 pb-2 px-4"><p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Admin</p></div><button onClick={() => { setView('admin'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'admin')}><UserCog size={20}/> <span>Gestión Usuarios</span></button></>)}
              <div className="pt-6 pb-2 px-4"><p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Acciones</p></div>
-             <button onClick={() => { setEditingContact(null); setView('form'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'form')}><UserPlus size={20}/> <span>Nuevo Diagnóstico</span></button>
+             {/* BOTÓN RENOMBRADO */}
+             <button onClick={() => { setEditingContact(null); setView('form'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'form')}><UserPlus size={20}/> <span>Cuestionario</span></button>
           </nav>
           <div className="p-4 bg-slate-950 border-t border-slate-800 space-y-2">
              <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:bg-red-950/30 transition-colors"><LogOut size={20}/> <span>Cerrar Sesión</span></button>
           </div>
        </aside>
        <main className="flex-1 flex flex-col h-screen overflow-hidden relative w-full bg-slate-50">
+          {/* HEADER MÓVIL (MODIFICADO) */}
           <header className="bg-white border-b border-slate-200 p-3 flex items-center justify-between lg:hidden shadow-sm z-10 shrink-0 h-14">
              <button onClick={() => setIsSidebarOpen(true)} className="text-slate-600 p-2 active:bg-slate-100 rounded"><Menu size={24} /></button>
-             <span className="font-bold text-slate-800">CRM Industrial</span><div className="w-8"></div>
+             <span className="font-bold text-slate-800">Cuestionario de Ventas</span><div className="w-8"></div>
           </header>
           
           <div className="flex-1 overflow-y-auto overflow-x-hidden p-0 md:p-8 w-full scroll-smooth bg-slate-50">
