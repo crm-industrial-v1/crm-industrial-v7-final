@@ -16,7 +16,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V8.1 - Renaming to Briefing"; 
+const APP_VERSION = "V8.2 - Fix 1000 Record Limit"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
 const SUPER_ADMIN_EMAIL = "jesusblanco@mmesl.com";
@@ -209,7 +209,6 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
           <Card className="p-6 flex flex-col justify-center items-center text-center bg-gradient-to-br from-white to-slate-50">
              <div className="p-4 mb-4"><img src={logoM} alt="Logo" className="w-16 h-16 object-contain opacity-90" /></div>
              <h3 className="font-bold text-lg text-slate-800 mb-2">Comenzar Trabajo</h3>
-             {/* --- CAMBIO DE TEXTO DEL BOTÓN A "Nuevo Briefing" --- */}
              <Button onClick={() => { setEditingContact(null); setView('form'); }} icon={UserPlus} className="px-6 py-3 shadow-xl w-full md:w-auto">Nuevo Briefing</Button>
           </Card>
         </div>
@@ -378,6 +377,8 @@ export default function App() {
       const { data, error } = await supabase
         .from('industrial_contacts')
         .select('*, profiles:user_id(email, full_name, role)')
+        // AÑADIDO: Rango para traer hasta 10.000 registros
+        .range(0, 9999)
         .order('created_at', { ascending: false });
         
       if (error) throw error;
@@ -406,7 +407,6 @@ export default function App() {
                 <div className="flex justify-center mb-6">
                     <img src={logoM} alt="Logo" className="w-20 h-20 object-contain" />
                 </div>
-                {/* --- CAMBIO DE TÍTULO --- */}
                 <h1 className="text-2xl font-bold text-center text-slate-900 mb-2">Briefing Colaborativo</h1>
                 <p className="text-center text-slate-500 font-bold mb-1">{APP_VERSION}</p>
                 <p className="text-center text-slate-400 text-xs mb-8">Inicia sesión para acceder</p>
@@ -429,7 +429,6 @@ export default function App() {
                 <img src={logoM} alt="Logo" className="w-full h-full object-contain" />
              </div>
              <div className="min-w-0">
-                {/* --- CAMBIO DE TÍTULO BARRA LATERAL --- */}
                 <span className="text-lg font-bold tracking-tight block truncate">Briefing Colaborativo</span>
                 <span className="text-[10px] block opacity-70">{APP_VERSION}</span>
              </div>
@@ -439,7 +438,6 @@ export default function App() {
              <button onClick={() => { setView('list'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'list')}><Users size={20}/> <span>Base de Datos</span></button>
              {userRole === 'admin' && (<><div className="pt-4 pb-2 px-4"><p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Admin</p></div><button onClick={() => { setView('admin'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'admin')}><UserCog size={20}/> <span>Gestión Usuarios</span></button></>)}
              <div className="pt-6 pb-2 px-4"><p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Acciones</p></div>
-             {/* --- CAMBIO DE NOMBRE BOTÓN --- */}
              <button onClick={() => { setEditingContact(null); setView('form'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'form')}><UserPlus size={20}/> <span>Briefing</span></button>
           </nav>
           <div className="p-4 bg-slate-950 border-t border-slate-800 space-y-2">
@@ -449,7 +447,6 @@ export default function App() {
        <main className="flex-1 flex flex-col h-screen overflow-hidden relative w-full bg-slate-50">
           <header className="bg-white border-b border-slate-200 p-3 flex items-center justify-between lg:hidden shadow-sm z-10 shrink-0 h-14">
              <button onClick={() => setIsSidebarOpen(true)} className="text-slate-600 p-2 active:bg-slate-100 rounded"><Menu size={24} /></button>
-             {/* --- CAMBIO DE TÍTULO HEADER MÓVIL --- */}
              <span className="font-bold text-slate-800">Briefing Colaborativo</span><div className="w-8"></div>
           </header>
           
