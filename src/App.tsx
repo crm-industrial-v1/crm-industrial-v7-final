@@ -3,7 +3,7 @@ import { supabase } from './lib/supabase';
 import { 
   LayoutDashboard, Users, UserPlus, Search, Trash2, Edit, 
   Briefcase, CheckCircle2, Clock, Target, FileText, 
-  LogOut, Shield, UserCog, Menu, Loader2, Calendar, User, Lock
+  LogOut, Shield, UserCog, Menu, Loader2, Calendar, User, Lock, Filter
 } from 'lucide-react';
 
 // --- IMPORTAMOS EL NUEVO LOGO ---
@@ -16,10 +16,9 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V7.9.4 - Delete Users Feature"; 
+const APP_VERSION = "V7.9.5 - Dashboard Filters & Logo"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
-// Este usuario nunca podrá ser modificado de rol ni borrado accidentalmente
 const SUPER_ADMIN_EMAIL = "jesusblanco@mmesl.com";
 
 // --- ESTILOS COMUNES ---
@@ -29,7 +28,7 @@ const selectClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text
 
 // --- COMPONENTES AUXILIARES ---
 
-// 1. VISTA ADMINISTRACIÓN (CON BORRADO DE USUARIOS)
+// 1. VISTA ADMINISTRACIÓN
 const AdminView = () => {
     const [users, setUsers] = useState<any[]>([]);
     const [newEmail, setNewEmail] = useState('');
@@ -72,45 +71,30 @@ const AdminView = () => {
 
     const updateUserField = async (id: string, field: string, value: string, currentValue: string) => {
         if (value === currentValue) return;
-
         const { error } = await supabase.from('profiles').update({ [field]: value }).eq('id', id);
         if (!error) {
              setUsers(users.map(u => u.id === id ? { ...u, [field]: value } : u));
-             console.log("Guardado:", field, value); 
         } else {
             alert('Error al actualizar: ' + error.message);
             fetchUsers(); 
         }
     };
 
-    // --- NUEVA FUNCIÓN DE BORRADO ---
     const deleteUser = async (id: string, email: string) => {
         if (email === SUPER_ADMIN_EMAIL) {
             alert("Acción no permitida: No puedes borrar al Super Admin.");
             return;
         }
-        
-        const confirmMsg = `¿Estás SEGURO de que quieres eliminar a ${email}?\n\nEsta acción borrará su perfil y le impedirá el acceso.`;
-        if (!window.confirm(confirmMsg)) return;
-
-        // Borramos de la tabla profiles (esto revocará su acceso visual en la app)
+        if (!window.confirm(`¿Estás SEGURO de eliminar a ${email}?`)) return;
         const { error } = await supabase.from('profiles').delete().eq('id', id);
-
-        if (error) {
-            alert('Error al eliminar: ' + error.message);
-        } else {
-            // Actualizamos la lista visualmente
-            setUsers(users.filter(u => u.id !== id));
-            alert('Usuario eliminado correctamente.');
-        }
+        if (error) alert('Error: ' + error.message);
+        else setUsers(users.filter(u => u.id !== id));
     };
 
     return (
         <div className="space-y-6 animate-in fade-in pb-24">
              <Card className="p-6 border-l-4 border-l-purple-600">
                 <SectionHeader title="Gestión de Usuarios" icon={Shield} subtitle="Crear, Editar y Eliminar usuarios" />
-                
-                {/* FORMULARIO DE CREACIÓN */}
                 <form onSubmit={createUser} className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                     <div className="md:col-span-1"><label className={labelClass}>Email</label><input type="email" required className={inputClass} value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="email@..." /></div>
                     <div className="md:col-span-1"><label className={labelClass}>Nombre</label><input type="text" required className={inputClass} value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ej: Juan Pérez" /></div>
@@ -118,91 +102,57 @@ const AdminView = () => {
                     <div className="md:col-span-1"><label className={labelClass}>Rol</label><select className={selectClass} value={newRole} onChange={e => setNewRole(e.target.value)}><option value="sales">Comercial</option><option value="manager">Jefe Ventas</option><option value="admin">Administrador</option></select></div>
                     <Button type="submit" icon={UserPlus} className="w-full">Crear</Button>
                 </form>
-
-                {/* TABLA DE USUARIOS EDITABLE */}
                 <div className="overflow-x-auto rounded-lg border border-slate-200 shadow-sm">
                     <table className="w-full text-sm text-left bg-white">
                         <thead className="bg-slate-100 text-slate-500 uppercase font-bold text-xs">
-                            <tr>
-                                <th className="p-4">Email</th>
-                                <th className="p-4">Nombre Completo (Editable)</th>
-                                <th className="p-4">Rol (Editable)</th>
-                                <th className="p-4 text-right">Acciones</th>
-                            </tr>
+                            <tr><th className="p-4">Email</th><th className="p-4">Nombre</th><th className="p-4">Rol</th><th className="p-4 text-right">Acciones</th></tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {users.map(u => {
                                 const isSuperAdmin = u.email === SUPER_ADMIN_EMAIL;
                                 return (
                                 <tr key={u.id} className="hover:bg-blue-50/30 transition-colors group">
-                                    <td className="p-4 font-medium text-slate-700 flex items-center gap-2">
-                                        {u.email}
-                                        {isSuperAdmin && (
-                                            <span title="Super Admin Protegido">
-                                                <Lock size={12} className="text-amber-500"/>
-                                            </span>
-                                        )}
-                                    </td>
-                                    
-                                    <td className="p-3">
-                                        <div className="relative">
-                                            <input 
-                                                className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white rounded px-2 py-1.5 transition-all outline-none text-slate-800"
-                                                defaultValue={u.full_name || ''}
-                                                placeholder="Clic para añadir nombre..."
-                                                onBlur={(e) => updateUserField(u.id, 'full_name', e.target.value, u.full_name)}
-                                                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-                                            />
-                                            <Edit size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 opacity-0 group-hover:opacity-100 pointer-events-none" />
-                                        </div>
-                                    </td>
-
-                                    <td className="p-3">
-                                        <select 
-                                            className={`p-1.5 border rounded w-full text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 ${
-                                                u.role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                                                u.role === 'manager' ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                                                'bg-white text-slate-700 border-slate-200'
-                                            } ${isSuperAdmin ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                                            value={u.role} 
-                                            disabled={isSuperAdmin} 
-                                            onChange={(e) => updateUserField(u.id, 'role', e.target.value, u.role)}
-                                        >
-                                            <option value="sales">Comercial</option>
-                                            <option value="manager">Jefe Ventas</option>
-                                            <option value="admin">Administrador</option>
-                                        </select>
-                                    </td>
-
-                                    {/* COLUMNA DE ACCIONES (BORRAR) */}
-                                    <td className="p-3 text-right">
-                                        {!isSuperAdmin && (
-                                            <button 
-                                                onClick={() => deleteUser(u.id, u.email)}
-                                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                title="Eliminar usuario"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
-                                        )}
-                                    </td>
+                                    <td className="p-4 font-medium text-slate-700 flex items-center gap-2">{u.email}{isSuperAdmin && <span title="Super Admin"><Lock size={12} className="text-amber-500"/></span>}</td>
+                                    <td className="p-3"><div className="relative"><input className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white rounded px-2 py-1.5 outline-none text-slate-800" defaultValue={u.full_name || ''} onBlur={(e) => updateUserField(u.id, 'full_name', e.target.value, u.full_name)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} /><Edit size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 opacity-0 group-hover:opacity-100 pointer-events-none" /></div></td>
+                                    <td className="p-3"><select className={`p-1.5 border rounded w-full text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 ${u.role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-200' : u.role === 'manager' ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-white text-slate-700 border-slate-200'} ${isSuperAdmin ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`} value={u.role} disabled={isSuperAdmin} onChange={(e) => updateUserField(u.id, 'role', e.target.value, u.role)}><option value="sales">Comercial</option><option value="manager">Jefe Ventas</option><option value="admin">Administrador</option></select></td>
+                                    <td className="p-3 text-right">{!isSuperAdmin && (<button onClick={() => deleteUser(u.id, u.email)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={16} /></button>)}</td>
                                 </tr>
                             )})} 
                         </tbody>
                     </table>
                 </div>
-                <p className="text-[10px] text-slate-400 mt-2 text-right">* El Super Admin no puede ser eliminado ni modificado.</p>
              </Card>
         </div>
     );
 };
 
-// 2. VISTA DASHBOARD
+// 2. VISTA DASHBOARD (MODIFICADO CON FILTRO)
 const DashboardView = ({ contacts, userRole, session, setEditingContact, setView, userProfile }: any) => {
-    const relevantContacts = userRole === 'sales' 
-        ? contacts.filter((c: any) => c.user_id === session.user.id) 
-        : contacts;
+    // Estado para el filtro del Dashboard
+    const [filterUserId, setFilterUserId] = useState<string>('all');
 
+    // Lógica para obtener lista única de comerciales (para el filtro)
+    const uniqueSalesUsers = Array.from(new Set(contacts.map((c: any) => c.user_id)))
+        .map(id => {
+            const contact = contacts.find((c: any) => c.user_id === id);
+            const name = contact?.profiles?.full_name || contact?.profiles?.email || 'Desconocido';
+            return { id, label: name };
+        })
+        .filter(u => u.label !== 'Desconocido');
+
+    // Lógica de filtrado PRINCIPAL del Dashboard
+    let relevantContacts = contacts;
+    if (userRole === 'sales') {
+        // Si soy comercial, SOLO veo lo mío (ignoro el filtro)
+        relevantContacts = contacts.filter((c: any) => c.user_id === session.user.id);
+    } else {
+        // Si soy Admin/Jefe, aplico el filtro del dropdown
+        if (filterUserId !== 'all') {
+            relevantContacts = contacts.filter((c: any) => c.user_id === filterUserId);
+        }
+    }
+
+    // Cálculos basados en los contactos filtrados
     const total = relevantContacts.length;
     const clients = relevantContacts.filter((c: any) => c.sap_status === 'Cliente SAP').length;
     const leads = relevantContacts.filter((c: any) => ['Lead SAP', 'Nuevo Prospecto'].includes(c.sap_status)).length;
@@ -213,7 +163,7 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
 
     return (
       <div className="space-y-6 animate-in fade-in duration-500 w-full overflow-hidden pb-24">
-        <div className="flex justify-between items-center px-1">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center px-1 gap-4">
              <div>
                 <h2 className="text-lg md:text-2xl font-bold text-slate-800 flex items-center gap-2">
                     Hola, <span className="text-blue-600">{displayName}</span>
@@ -223,7 +173,24 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
                     <span className="text-[10px] text-slate-400">{APP_VERSION}</span>
                 </div>
              </div>
-             {userRole !== 'sales' && <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-bold">Vista Global</span>}
+
+             {/* FILTRO DE DASHBOARD (SOLO ADMINS/JEFES) */}
+             {(userRole !== 'sales') && (
+                 <div className="flex items-center gap-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
+                    <Filter size={14} className="text-slate-400 ml-1" />
+                    <select 
+                        className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer min-w-[150px]"
+                        value={filterUserId}
+                        onChange={(e) => setFilterUserId(e.target.value)}
+                    >
+                        <option value="all">Ver: Todos</option>
+                        <option disabled>──────────</option>
+                        {uniqueSalesUsers.map((u: any) => (
+                            <option key={u.id} value={u.id}>{u.label}</option>
+                        ))}
+                    </select>
+                 </div>
+             )}
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 w-full">
@@ -235,7 +202,7 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
           <Card className="p-4 md:p-6 h-full">
-            <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-slate-800"><Calendar className="text-blue-600"/> Agenda</h3>
+            <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-slate-800"><Calendar className="text-blue-600"/> Agenda {filterUserId !== 'all' && <span className="text-xs font-normal text-slate-400 ml-2">(Filtrada)</span>}</h3>
             <div className="space-y-3">
                {relevantContacts.filter((c: any) => c.next_action_date).sort((a: any, b: any) => new Date(a.next_action_date).getTime() - new Date(b.next_action_date).getTime()).slice(0,5).map((c: any) => (
                  <div key={c.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100 shadow-sm active:bg-blue-50 transition-colors cursor-pointer" onClick={() => { setEditingContact(c); setView('form'); }}>
@@ -243,7 +210,7 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
                    <div className="text-right shrink-0 ml-2"><p className={`text-xs font-bold ${c.next_action_date <= today ? 'text-red-600' : 'text-blue-600'}`}>{c.next_action_date}</p><p className="text-xs text-slate-400">{c.next_action_time?.slice(0,5)}</p></div>
                  </div>
                ))}
-               {relevantContacts.length === 0 && <div className="p-6 text-center text-slate-400 border-2 border-dashed border-slate-100 rounded-xl">Sin acciones.</div>}
+               {relevantContacts.length === 0 && <div className="p-6 text-center text-slate-400 border-2 border-dashed border-slate-100 rounded-xl">Sin acciones para esta selección.</div>}
             </div>
           </Card>
           <Card className="p-6 flex flex-col justify-center items-center text-center bg-gradient-to-br from-white to-slate-50">
@@ -463,7 +430,10 @@ export default function App() {
     <div className="flex h-screen bg-slate-100 font-sans text-slate-900 w-full fixed inset-0 max-w-[100vw] overflow-x-hidden">
        <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 flex flex-col shadow-2xl shrink-0`}>
           <div className="p-6 border-b border-slate-800 flex items-center gap-3 bg-slate-950">
-             <img src={logoM} alt="Logo" className="w-10 h-10 object-contain brightness-0 invert" />
+             {/* AQUÍ HE PUESTO EL LOGO CON FONDO BLANCO PARA QUE RESALTE */}
+             <div className="bg-white rounded-lg p-1 w-12 h-12 flex items-center justify-center shrink-0">
+                <img src={logoM} alt="Logo" className="w-full h-full object-contain" />
+             </div>
              <div className="min-w-0">
                 <span className="text-lg font-bold tracking-tight block truncate">Cuestionario de Ventas</span>
                 <span className="text-[10px] block opacity-70">{APP_VERSION}</span>
