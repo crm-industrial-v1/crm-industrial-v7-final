@@ -181,19 +181,18 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
     const goToPrevTab = () => { const idx = TABS.findIndex(t => t.id === activeTab); if(idx > 0) setActiveTab(TABS[idx-1].id); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
     return (
-        // CAMBIO CRÍTICO: Eliminado 'overflow-hidden' de aquí abajo para que funcione el sticky
         <div className="max-w-5xl mx-auto pb-32 w-full px-2 md:px-0">
             
-            {/* TÍTULO SIMPLE (Se oculta al hacer scroll) */}
-            <div className="mb-4 mt-2 px-1">
+            {/* TÍTULO SIMPLE - CAMBIO AQUÍ: 'hidden md:block' */}
+            {/* Esto significa: Oculto por defecto (móvil) y Visible a partir de pantalla media (PC) */}
+            <div className="hidden md:block mb-4 mt-2 px-1">
                 <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                     {initialData ? 'Editar Briefing' : 'Nuevo Briefing'}
                 </h2>
                 <p className="text-xs text-slate-500">Complete la información paso a paso.</p>
             </div>
 
-            {/* TABS NAVEGACIÓN - AHORA CON 'sticky' Y FONDO CRISTAL */}
-            {/* Ajustado 'top-[-1px]' para asegurar que pegue bien arriba */}
+            {/* TABS NAVEGACIÓN */}
             <div className="sticky top-[-1px] z-50 mb-6 py-2 bg-slate-100/90 backdrop-blur-md -mx-2 px-2 md:mx-0 shadow-sm border-b border-slate-200/50 transition-all">
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-2 overflow-x-auto no-scrollbar">
                     <div className="flex md:grid md:grid-cols-7 gap-2 min-w-max md:min-w-0"> 
