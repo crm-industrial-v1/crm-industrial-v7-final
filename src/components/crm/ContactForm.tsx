@@ -181,10 +181,9 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
     const goToPrevTab = () => { const idx = TABS.findIndex(t => t.id === activeTab); if(idx > 0) setActiveTab(TABS[idx-1].id); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
     return (
-        <div className="max-w-5xl mx-auto pb-32 w-full px-2 md:px-0">
+        <div className="max-w-5xl mx-auto pb-32 w-full px-0 md:px-0">
             
-            {/* TÍTULO SIMPLE - CAMBIO AQUÍ: 'hidden md:block' */}
-            {/* Esto significa: Oculto por defecto (móvil) y Visible a partir de pantalla media (PC) */}
+            {/* TÍTULO SIMPLE (Visible solo en PC) */}
             <div className="hidden md:block mb-4 mt-2 px-1">
                 <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                     {initialData ? 'Editar Briefing' : 'Nuevo Briefing'}
@@ -192,9 +191,15 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                 <p className="text-xs text-slate-500">Complete la información paso a paso.</p>
             </div>
 
-            {/* TABS NAVEGACIÓN */}
-            <div className="sticky top-[-1px] z-50 mb-6 py-2 bg-slate-100/90 backdrop-blur-md -mx-2 px-2 md:mx-0 shadow-sm border-b border-slate-200/50 transition-all">
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-2 overflow-x-auto no-scrollbar">
+            {/* TABS NAVEGACIÓN - PEGADO ARRIBA (SIN ESPACIOS) */}
+            {/* CAMBIOS CLAVE AQUÍ:
+                1. -mt-2: Sube la barra para comerse el espacio blanco del padre.
+                2. md:mt-0: En PC (md) quita ese margen negativo para que se vea normal.
+                3. rounded-none: En móvil quita los bordes redondos para que encaje con la cabecera.
+                4. md:rounded-xl: En PC vuelve a poner los bordes bonitos.
+            */}
+            <div className="sticky top-0 z-50 py-2 bg-slate-100/95 backdrop-blur-md shadow-sm border-b border-slate-200/50 transition-all -mt-2 md:mt-0 w-full rounded-none md:rounded-xl">
+                <div className="bg-white md:rounded-xl shadow-sm border border-slate-200 p-2 overflow-x-auto no-scrollbar">
                     <div className="flex md:grid md:grid-cols-7 gap-2 min-w-max md:min-w-0"> 
                         {TABS.map(tab => (
                             <button key={tab.id} onClick={() => setActiveTab(tab.id)} 
@@ -208,7 +213,7 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                 </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6 w-full px-0.5">
+            <form onSubmit={handleSubmit} className="space-y-6 w-full px-0.5 mt-4 md:mt-0">
                 {activeTab === 'sap' && (<Card className="p-4 md:p-8"><SectionHeader title="Identificación SAP" icon={Search} /><div className="grid grid-cols-1 gap-4"><div><label className={labelClass}>Estado</label><select className={selectClass} value={formData.sap_status} onChange={e => handleChange('sap_status', e.target.value)}><option>Nuevo Prospecto</option><option>Lead SAP</option><option>Cliente SAP</option></select></div><div><label className={labelClass}>Código SAP</label><input className={inputClass} placeholder="Ej: C000450" value={formData.sap_id} onChange={e => handleChange('sap_id', e.target.value)} /></div></div><div className="flex justify-end mt-6 pt-4 border-t"><Button onClick={goToNextTab} icon={ArrowRight} variant="secondary">Siguiente</Button></div></Card>)}
                 
                 {activeTab === 'registro' && (
