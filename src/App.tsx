@@ -3,7 +3,7 @@ import { supabase } from './lib/supabase';
 import { 
   LayoutDashboard, Users, UserPlus, Search, Trash2, Edit, 
   Briefcase, CheckCircle2, Clock, Target, FileText, 
-  LogOut, Shield, UserCog, Menu, Loader2, Calendar, User
+  LogOut, Shield, UserCog, Menu, Loader2, Calendar, User, Save
 } from 'lucide-react';
 
 // --- IMPORTAMOS EL NUEVO LOGO ---
@@ -16,7 +16,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V7.8 - User Names Support"; 
+const APP_VERSION = "V7.9 - Live User Editing"; 
 
 // --- ESTILOS COMUNES ---
 const inputClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm text-sm";
@@ -25,25 +25,25 @@ const selectClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text
 
 // --- COMPONENTES AUXILIARES ---
 
-// 1. VISTA ADMINISTRACIÓN (MODIFICADA PARA INCLUIR NOMBRE)
+// 1. VISTA ADMINISTRACIÓN (MEJORADA PARA EDICIÓN)
 const AdminView = () => {
     const [users, setUsers] = useState<any[]>([]);
     const [newEmail, setNewEmail] = useState('');
     const [newPass, setNewPass] = useState('');
-    const [newName, setNewName] = useState(''); // Nuevo estado para nombre
+    const [newName, setNewName] = useState(''); 
     const [newRole, setNewRole] = useState('sales');
 
     useEffect(() => {
-        const fetchUsers = async () => {
-            const { data } = await supabase.from('profiles').select('*').order('email');
-            setUsers(data || []);
-        };
         fetchUsers();
     }, []);
 
+    const fetchUsers = async () => {
+        const { data } = await supabase.from('profiles').select('*').order('email');
+        setUsers(data || []);
+    };
+
     const createUser = async (e: React.FormEvent) => {
         e.preventDefault();
-        // 1. Crear Auth
         const { data, error } = await supabase.auth.signUp({ 
             email: newEmail, 
             password: newPass, 
@@ -53,7 +53,6 @@ const AdminView = () => {
         if (error) {
             alert('Error: ' + error.message);
         } else if (data.user) {
-            // 2. Crear Perfil con nombre
             await supabase.from('profiles').insert([{ 
                 id: data.user.id, 
                 email: newEmail, 
@@ -61,26 +60,32 @@ const AdminView = () => {
                 full_name: newName 
             }]);
             
-            alert('Usuario creado.');
+            alert('Usuario creado correctamente.');
             setNewEmail(''); setNewPass(''); setNewName('');
-            const { data: newData } = await supabase.from('profiles').select('*').order('email');
-            setUsers(newData || []);
+            fetchUsers();
         }
     };
 
-    const updateUserField = async (id: string, field: string, value: string) => {
+    // Función optimizada para guardar cambios
+    const updateUserField = async (id: string, field: string, value: string, currentValue: string) => {
+        // Solo guardamos si el valor realmente ha cambiado para evitar llamadas innecesarias
+        if (value === currentValue) return;
+
         const { error } = await supabase.from('profiles').update({ [field]: value }).eq('id', id);
         if (!error) {
+             // Actualizamos el estado local para reflejar el cambio
              setUsers(users.map(u => u.id === id ? { ...u, [field]: value } : u));
+             console.log("Guardado:", field, value); // Feedback en consola
         } else {
-            alert('Error al actualizar');
+            alert('Error al actualizar: ' + error.message);
+            fetchUsers(); // Revertimos cambios si falla
         }
     };
 
     return (
         <div className="space-y-6 animate-in fade-in pb-24">
              <Card className="p-6 border-l-4 border-l-purple-600">
-                <SectionHeader title="Gestión de Usuarios" icon={Shield} subtitle="Crear usuarios y asignar roles" />
+                <SectionHeader title="Gestión de Usuarios" icon={Shield} subtitle="Crear y Editar usuarios" />
                 
                 {/* FORMULARIO DE CREACIÓN */}
                 <form onSubmit={createUser} className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
@@ -91,37 +96,54 @@ const AdminView = () => {
                     <Button type="submit" icon={UserPlus} className="w-full">Crear</Button>
                 </form>
 
-                {/* TABLA DE USUARIOS */}
-                <div className="overflow-x-auto rounded-lg border border-slate-200">
+                {/* TABLA DE USUARIOS EDITABLE */}
+                <div className="overflow-x-auto rounded-lg border border-slate-200 shadow-sm">
                     <table className="w-full text-sm text-left bg-white">
                         <thead className="bg-slate-100 text-slate-500 uppercase font-bold text-xs">
                             <tr>
-                                <th className="p-3">Email</th>
-                                <th className="p-3">Nombre Completo</th>
-                                <th className="p-3">Rol</th>
+                                <th className="p-4">Email</th>
+                                <th className="p-4">Nombre Completo (Editable)</th>
+                                <th className="p-4">Rol (Editable)</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {users.map(u => (
-                                <tr key={u.id} className="hover:bg-slate-50">
-                                    <td className="p-3 font-medium text-slate-700">{u.email}</td>
+                                <tr key={u.id} className="hover:bg-blue-50/30 transition-colors group">
+                                    <td className="p-4 font-medium text-slate-700">{u.email}</td>
+                                    
+                                    {/* CAMPO NOMBRE EDITABLE */}
                                     <td className="p-3">
-                                        <input 
-                                            className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none py-1 transition-colors"
-                                            value={u.full_name || ''}
-                                            placeholder="Sin nombre..."
-                                            onChange={(e) => updateUserField(u.id, 'full_name', e.target.value)}
-                                        />
+                                        <div className="relative">
+                                            <input 
+                                                className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white rounded px-2 py-1.5 transition-all outline-none text-slate-800"
+                                                defaultValue={u.full_name || ''}
+                                                placeholder="Clic para añadir nombre..."
+                                                // onBlur es la clave: Guarda solo cuando dejas de escribir
+                                                onBlur={(e) => updateUserField(u.id, 'full_name', e.target.value, u.full_name)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.currentTarget.blur(); // Guardar al pulsar Enter
+                                                    }
+                                                }}
+                                            />
+                                            <Edit size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 opacity-0 group-hover:opacity-100 pointer-events-none" />
+                                        </div>
                                     </td>
+
+                                    {/* CAMPO ROL EDITABLE */}
                                     <td className="p-3">
                                         <select 
-                                            className="p-1.5 border rounded bg-white w-full text-xs" 
+                                            className={`p-1.5 border rounded w-full text-xs font-bold cursor-pointer outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                u.role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                                                u.role === 'manager' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                                                'bg-white text-slate-700 border-slate-200'
+                                            }`}
                                             value={u.role} 
-                                            onChange={(e) => updateUserField(u.id, 'role', e.target.value)}
+                                            onChange={(e) => updateUserField(u.id, 'role', e.target.value, u.role)}
                                         >
                                             <option value="sales">Comercial</option>
-                                            <option value="manager">Jefe</option>
-                                            <option value="admin">Admin</option>
+                                            <option value="manager">Jefe Ventas</option>
+                                            <option value="admin">Administrador</option>
                                         </select>
                                     </td>
                                 </tr>
@@ -129,12 +151,13 @@ const AdminView = () => {
                         </tbody>
                     </table>
                 </div>
+                <p className="text-[10px] text-slate-400 mt-2 text-right">* Pulsa sobre el nombre o rol para editar. Los cambios se guardan automáticamente.</p>
              </Card>
         </div>
     );
 };
 
-// 2. VISTA DASHBOARD (MODIFICADA SALUDO)
+// 2. VISTA DASHBOARD
 const DashboardView = ({ contacts, userRole, session, setEditingContact, setView, userProfile }: any) => {
     const relevantContacts = userRole === 'sales' 
         ? contacts.filter((c: any) => c.user_id === session.user.id) 
@@ -146,14 +169,12 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
     const today = new Date().toISOString().split('T')[0];
     const pending = relevantContacts.filter((c: any) => c.next_action_date && c.next_action_date <= today).length;
 
-    // Lógica del nombre para el saludo
     const displayName = userProfile?.full_name || userProfile?.email?.split('@')[0] || 'Usuario';
 
     return (
       <div className="space-y-6 animate-in fade-in duration-500 w-full overflow-hidden pb-24">
         <div className="flex justify-between items-center px-1">
              <div>
-                {/* AQUÍ ESTÁ EL CAMBIO DEL SALUDO */}
                 <h2 className="text-lg md:text-2xl font-bold text-slate-800 flex items-center gap-2">
                     Hola, <span className="text-blue-600">{displayName}</span>
                 </h2>
@@ -216,11 +237,9 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
         c.contact_person?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // Obtener lista única de usuarios para el filtro, usando AHORA el nombre real si existe
     const uniqueSalesUsers = Array.from(new Set(contacts.map((c: any) => c.user_id)))
         .map(id => {
             const contact = contacts.find((c: any) => c.user_id === id);
-            // Priorizamos mostrar el nombre completo, si no, el email
             const name = contact?.profiles?.full_name || contact?.profiles?.email || 'Desconocido';
             return { id, label: name };
         })
@@ -294,7 +313,6 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
 export default function App() {
   const [session, setSession] = useState<any>(null);
   const [userRole, setUserRole] = useState<string>('sales');
-  // Estado para guardar el perfil completo (nombre, rol, etc.)
   const [userProfile, setUserProfile] = useState<any>(null);
   
   const [view, setView] = useState('dashboard');
@@ -334,7 +352,7 @@ export default function App() {
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
     if (data) {
         setUserRole(data.role);
-        setUserProfile(data); // Guardamos el perfil completo para tener el nombre
+        setUserProfile(data);
     }
   }
 
@@ -356,7 +374,6 @@ export default function App() {
   async function fetchContacts() {
     try {
       setLoading(true);
-      // Ahora traemos también full_name y role de la tabla profiles
       const { data, error } = await supabase
         .from('industrial_contacts')
         .select('*, profiles:user_id(email, full_name, role)')
@@ -380,7 +397,7 @@ export default function App() {
 
   const navBtnClass = (active: boolean) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${active ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`;
 
-  // --- LOGIN SCREEN (MODIFICADO) ---
+  // --- LOGIN SCREEN ---
   if (!session) {
     return (
         <div className="h-screen w-full flex items-center justify-center bg-slate-100 p-4">
