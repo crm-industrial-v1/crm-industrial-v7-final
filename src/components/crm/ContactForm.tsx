@@ -34,7 +34,7 @@ const TABS = [
     { id: 'registro', label: 'Datos Registro', icon: Briefcase },
     { id: 'negocio', label: 'Negocio', icon: Factory },
     { id: 'materiales', label: 'Materiales', icon: Package },
-    { id: 'maquinaria', label: 'Maquinaria', icon: Wrench }, // Icono cambiado a Wrench
+    { id: 'maquinaria', label: 'Maquinaria', icon: Wrench }, 
     { id: 'necesidades', label: 'Necesidades', icon: Search },
     { id: 'cierre', label: 'Próximos pasos', icon: Calendar } 
 ];
@@ -55,51 +55,43 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
     const [activeTab, setActiveTab] = useState('sap');
     const [saving, setSaving] = useState(false);
     
-    // Estado principal del contacto
+    // Estado principal del contacto - AÑADIDOS city y state
     const [formData, setFormData] = useState({
         sap_status: 'Nuevo Prospecto', sap_id: '',
-        fiscal_name: '', cif: '', contact_person: '', job_title: '', phone: '', email: '', address: '',
+        fiscal_name: '', cif: '', contact_person: '', job_title: '', phone: '', email: '', 
+        address: '', city: '', state: '', // <-- NUEVOS CAMPOS
         sector: 'Agroalimentario', main_products: '', volume: 'Medio', packaging_mgmt: 'Mixto',
         pain_points: [] as string[], budget: 'Sin presupuesto fijo',
         detected_interest: [] as string[], solution_summary: '', 
         next_action: 'Llamada de seguimiento', next_action_date: '', next_action_time: '09:00', responsible: ''
     });
 
-    // Estados para las listas dinámicas
     const [materials, setMaterials] = useState<any[]>([]);
     const [machines, setMachines] = useState<any[]>([]);
 
-    // Cargar datos al iniciar
     useEffect(() => {
         if (initialData) {
-            // 1. Cargar datos planos
             const { id, created_at, user_id, profiles, ...rest } = initialData;
-            
-            // Limpiamos campos antiguos de versiones previas si existieran
             const cleanData = { ...rest };
-            // Eliminamos campos viejos de máquina single si existían en el objeto
+            
+            // Limpieza de campos legacy si existieran
             delete cleanData.quality_rating; delete cleanData.sustainable_interest;
             delete cleanData.mac1_type; delete cleanData.mac1_brand; 
             delete cleanData.mac1_age; delete cleanData.mac1_status;
 
             setFormData(cleanData);
-
-            // 2. Cargar tablas relacionadas
             fetchRelatedData(initialData.id);
         } else {
-            // Si es nuevo, iniciamos con 1 hueco vacío en cada lista
             addMaterial();
             addMachine();
         }
     }, [initialData]);
 
     const fetchRelatedData = async (contactId: string) => {
-        // Cargar Materiales
         const { data: matData } = await supabase.from('contact_materials').select('*').eq('contact_id', contactId);
         if (matData && matData.length > 0) setMaterials(matData);
         else addMaterial();
 
-        // Cargar Maquinaria
         const { data: macData } = await supabase.from('contact_machinery').select('*').eq('contact_id', contactId);
         if (macData && macData.length > 0) setMachines(macData);
         else addMachine();
@@ -124,8 +116,6 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
     const updateMachine = (index: number, field: string, value: string) => { 
         const newMacs = [...machines]; 
         newMacs[index] = { ...newMacs[index], [field]: value }; 
-        
-        // Lógica especial para limpiar el campo personalizado si cambian el dropdown
         if (field === 'machine_type' && value !== 'Otro') {
             newMacs[index].custom_type = ''; 
         }
@@ -144,7 +134,6 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
 
             let contactId = initialData?.id;
             
-            // 1. Guardar Contacto Principal
             if (initialData) {
                 const { error } = await supabase.from('industrial_contacts').update(contactPayload).eq('id', initialData.id);
                 if (error) throw error;
@@ -155,7 +144,6 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
             }
 
             if (contactId) {
-                // 2. Guardar Materiales (Borrar anteriores e insertar nuevos)
                 await supabase.from('contact_materials').delete().eq('contact_id', contactId);
                 const matsToSave = materials.filter(m => m.material_type).map(m => ({
                     contact_id: contactId,
@@ -168,11 +156,9 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                 }));
                 if (matsToSave.length > 0) await supabase.from('contact_materials').insert(matsToSave);
 
-                // 3. Guardar Maquinaria (Borrar anteriores e insertar nuevas)
                 await supabase.from('contact_machinery').delete().eq('contact_id', contactId);
                 const macsToSave = machines.filter(m => m.machine_type).map(m => ({
                     contact_id: contactId,
-                    // Si es "Otro", guardamos lo que hayan escrito en custom_type, si no, el del dropdown
                     machine_type: m.machine_type === 'Otro' ? (m.custom_type || 'Otro') : m.machine_type,
                     brand: m.brand,
                     model: m.model,
@@ -191,30 +177,19 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
         }
     };
 
-    // Navegación Tabs
-    const goToNextTab = () => {
-        const idx = TABS.findIndex(t => t.id === activeTab);
-        if(idx < TABS.length -1) setActiveTab(TABS[idx+1].id);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-    const goToPrevTab = () => {
-        const idx = TABS.findIndex(t => t.id === activeTab);
-        if(idx > 0) setActiveTab(TABS[idx-1].id);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
+    const goToNextTab = () => { const idx = TABS.findIndex(t => t.id === activeTab); if(idx < TABS.length -1) setActiveTab(TABS[idx+1].id); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+    const goToPrevTab = () => { const idx = TABS.findIndex(t => t.id === activeTab); if(idx > 0) setActiveTab(TABS[idx-1].id); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
     return (
         <div className="max-w-5xl mx-auto pb-32 w-full overflow-hidden">
-             {/* HEADER FLOTANTE */}
             <div className="flex flex-col md:flex-row justify-between mb-4 sticky top-2 z-30 p-3 bg-white/95 backdrop-blur-md border border-slate-200 shadow-lg rounded-xl transition-all">
-                <div className="mb-3 md:mb-0 px-1"><h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">{initialData ? 'Editar Cuestionario' : 'Nuevo Cuestionario'}</h2></div>
+                <div className="mb-3 md:mb-0 px-1"><h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">{initialData ? 'Editar Briefing' : 'Nuevo Briefing'}</h2></div>
                 <div className="flex gap-2 w-full md:w-auto">
                     <Button variant="secondary" onClick={onCancel} className="flex-1 md:flex-none justify-center text-xs">Cancelar</Button>
                     <Button variant="primary" onClick={handleSubmit} icon={Save} disabled={saving} className="flex-1 md:flex-none justify-center text-xs">{saving ? '...' : 'Guardar'}</Button>
                 </div>
             </div>
 
-            {/* TABS NAVEGACIÓN */}
             <div className="sticky top-[80px] z-20 mb-6 pt-2 pb-2">
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-2">
                     <div className="grid grid-cols-3 md:flex md:gap-2 gap-1"> 
@@ -232,13 +207,34 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
 
             <form onSubmit={handleSubmit} className="space-y-6 w-full px-0.5">
                 {activeTab === 'sap' && (<Card className="p-4 md:p-8"><SectionHeader title="Identificación SAP" icon={Search} /><div className="grid grid-cols-1 gap-4"><div><label className={labelClass}>Estado</label><select className={selectClass} value={formData.sap_status} onChange={e => handleChange('sap_status', e.target.value)}><option>Nuevo Prospecto</option><option>Lead SAP</option><option>Cliente SAP</option></select></div><div><label className={labelClass}>Código SAP</label><input className={inputClass} placeholder="Ej: C000450" value={formData.sap_id} onChange={e => handleChange('sap_id', e.target.value)} /></div></div><div className="flex justify-end mt-6 pt-4 border-t"><Button onClick={goToNextTab} icon={ArrowRight} variant="secondary">Siguiente</Button></div></Card>)}
-                {activeTab === 'registro' && (<Card className="p-4 md:p-8"><SectionHeader title="Datos" icon={Briefcase} /><div className="grid grid-cols-1 gap-4"><div><label className={labelClass}>Fiscal *</label><input required className={inputClass} value={formData.fiscal_name} onChange={e => handleChange('fiscal_name', e.target.value)} /></div><div><label className={labelClass}>CIF *</label><input required className={inputClass} value={formData.cif} onChange={e => handleChange('cif', e.target.value)} /></div><div><label className={labelClass}>Contacto</label><input className={inputClass} value={formData.contact_person} onChange={e => handleChange('contact_person', e.target.value)} /></div><div><label className={labelClass}>Cargo</label><input className={inputClass} value={formData.job_title} onChange={e => handleChange('job_title', e.target.value)} /></div><div><label className={labelClass}>Teléfono</label><input className={inputClass} value={formData.phone} onChange={e => handleChange('phone', e.target.value)} /></div><div><label className={labelClass}>Email</label><input type="email" className={inputClass} value={formData.email} onChange={e => handleChange('email', e.target.value)} /></div><div className="md:col-span-2"><label className={labelClass}>Dirección</label><input className={inputClass} value={formData.address} onChange={e => handleChange('address', e.target.value)} /></div></div><div className="flex gap-3 mt-6 pt-4 border-t"><Button onClick={goToPrevTab} icon={ArrowLeft} variant="ghost" className="flex-1">Anterior</Button><Button onClick={goToNextTab} icon={ArrowRight} variant="secondary" className="flex-1">Siguiente</Button></div></Card>)}
+                
+                {/* --- PESTAÑA DATOS REGISTRO (MODIFICADA) --- */}
+                {activeTab === 'registro' && (
+                    <Card className="p-4 md:p-8">
+                        <SectionHeader title="Datos" icon={Briefcase} />
+                        <div className="grid grid-cols-1 gap-4">
+                            <div><label className={labelClass}>Fiscal *</label><input required className={inputClass} value={formData.fiscal_name} onChange={e => handleChange('fiscal_name', e.target.value)} /></div>
+                            <div><label className={labelClass}>CIF *</label><input required className={inputClass} value={formData.cif} onChange={e => handleChange('cif', e.target.value)} /></div>
+                            <div><label className={labelClass}>Contacto</label><input className={inputClass} value={formData.contact_person} onChange={e => handleChange('contact_person', e.target.value)} /></div>
+                            <div><label className={labelClass}>Cargo</label><input className={inputClass} value={formData.job_title} onChange={e => handleChange('job_title', e.target.value)} /></div>
+                            <div><label className={labelClass}>Teléfono</label><input className={inputClass} value={formData.phone} onChange={e => handleChange('phone', e.target.value)} /></div>
+                            <div><label className={labelClass}>Email</label><input type="email" className={inputClass} value={formData.email} onChange={e => handleChange('email', e.target.value)} /></div>
+                            
+                            {/* Dirección */}
+                            <div className="md:col-span-2"><label className={labelClass}>Dirección</label><input className={inputClass} value={formData.address} onChange={e => handleChange('address', e.target.value)} /></div>
+                            
+                            {/* CIUDAD Y PROVINCIA (NUEVOS) */}
+                            <div className="grid grid-cols-2 gap-4 md:col-span-2">
+                                <div><label className={labelClass}>Ciudad</label><input className={inputClass} value={formData.city || ''} onChange={e => handleChange('city', e.target.value)} placeholder="Ej: Sevilla" /></div>
+                                <div><label className={labelClass}>Provincia</label><input className={inputClass} value={formData.state || ''} onChange={e => handleChange('state', e.target.value)} placeholder="Ej: Sevilla" /></div>
+                            </div>
+                        </div>
+                        <div className="flex gap-3 mt-6 pt-4 border-t"><Button onClick={goToPrevTab} icon={ArrowLeft} variant="ghost" className="flex-1">Anterior</Button><Button onClick={goToNextTab} icon={ArrowRight} variant="secondary" className="flex-1">Siguiente</Button></div>
+                    </Card>
+                )}
+
                 {activeTab === 'negocio' && (<Card className="p-4 md:p-8"><SectionHeader title="Negocio" icon={Factory} /><div className="grid grid-cols-1 gap-4"><div><label className={labelClass}>Sector</label><select className={selectClass} value={formData.sector} onChange={e => handleChange('sector', e.target.value)}>{SECTORS.map(s => <option key={s} value={s}>{s}</option>)}</select></div><div><label className={labelClass}>Volumen</label><select className={selectClass} value={formData.volume} onChange={e => handleChange('volume', e.target.value)}><option>Bajo</option><option>Medio</option><option>Alto</option></select></div><div><label className={labelClass}>Embalaje</label><select className={selectClass} value={formData.packaging_mgmt} onChange={e => handleChange('packaging_mgmt', e.target.value)}><option>Interno</option><option>Externalizado</option><option>Mixto</option></select></div><div><label className={labelClass}>Productos</label><input className={inputClass} value={formData.main_products} onChange={e => handleChange('main_products', e.target.value)} /></div></div><div className="flex gap-3 mt-6 pt-4 border-t"><Button onClick={goToPrevTab} icon={ArrowLeft} variant="ghost" className="flex-1">Anterior</Button><Button onClick={goToNextTab} icon={ArrowRight} variant="secondary" className="flex-1">Siguiente</Button></div></Card>)}
-                
-                {/* --- SECCIÓN MATERIALES --- */}
                 {activeTab === 'materiales' && (<Card className="p-4 md:p-8 bg-slate-50"><SectionHeader title="Materiales de Consumo" icon={Package} />{materials.map((mat, index) => (<div key={index} className="rounded-xl border border-slate-200 mb-6 bg-white overflow-hidden shadow-sm animate-in slide-in-from-bottom-2"><div className="p-3 border-b bg-slate-50 flex justify-between items-center"><span className="text-xs font-bold px-2 py-1 rounded bg-blue-100 text-blue-700">MATERIAL {index + 1}</span><button type="button" onClick={() => removeMaterial(index)} className="text-slate-400 hover:text-red-500 transition-colors"><X size={18}/></button></div><div className="p-4 grid grid-cols-1 gap-4"><div><label className={labelClass}>Tipo</label><select className={selectClass} value={mat.material_type} onChange={e => updateMaterial(index, 'material_type', e.target.value)}><option value="">Seleccionar...</option>{MATERIAL_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}</select></div><div><label className={labelClass}>ID / Medidas</label><input className={inputClass} value={mat.id_medidas} onChange={e => updateMaterial(index, 'id_medidas', e.target.value)} /></div><div className="grid grid-cols-2 gap-3"><div><label className={labelClass}>Consumo</label><input className={inputClass} value={mat.consumption} onChange={e => updateMaterial(index, 'consumption', e.target.value)} /></div><div><label className={labelClass}>Precio</label><input className={inputClass} value={mat.price} onChange={e => updateMaterial(index, 'price', e.target.value)} /></div></div><div><label className={labelClass}>Proveedor</label><input className={inputClass} value={mat.supplier} onChange={e => updateMaterial(index, 'supplier', e.target.value)} /></div><div><label className={labelClass}>Notas</label><input className={inputClass} value={mat.notes} onChange={e => updateMaterial(index, 'notes', e.target.value)} /></div></div></div>))}<button type="button" onClick={addMaterial} className="w-full py-4 border-2 border-dashed border-blue-300 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"><Plus size={20} /> Añadir Otro Material</button><div className="flex gap-3 mt-8 pt-4 border-t"><Button onClick={goToPrevTab} icon={ArrowLeft} variant="ghost" className="flex-1">Anterior</Button><Button onClick={goToNextTab} icon={ArrowRight} variant="secondary" className="flex-1">Siguiente</Button></div></Card>)}
-                
-                {/* --- SECCIÓN MAQUINARIA (NUEVA ESTRUCTURA) --- */}
                 {activeTab === 'maquinaria' && (
                     <Card className="p-4 md:p-8 bg-slate-50">
                         <SectionHeader title="Parque de Maquinaria" icon={Wrench} />
@@ -249,52 +245,27 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                                     <button type="button" onClick={() => removeMachine(index)} className="text-slate-400 hover:text-red-500 transition-colors"><X size={18}/></button>
                                 </div>
                                 <div className="p-4 grid grid-cols-1 gap-4">
-                                    {/* TIPO + OTRO */}
                                     <div>
                                         <label className={labelClass}>Tipo de Máquina</label>
                                         <select className={selectClass} value={mac.machine_type === 'Otro' || !MACHINE_TYPE_OPTIONS.includes(mac.machine_type) && mac.machine_type ? 'Otro' : mac.machine_type} onChange={e => updateMachine(index, 'machine_type', e.target.value)}>
                                             <option value="">Seleccionar...</option>
                                             {MACHINE_TYPE_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}
                                         </select>
-                                        {/* Input condicional si selecciona "Otro" */}
                                         {(mac.machine_type === 'Otro' || (!MACHINE_TYPE_OPTIONS.includes(mac.machine_type) && mac.machine_type)) && (
-                                            <input 
-                                                className={`${inputClass} mt-2 border-orange-300 bg-orange-50`} 
-                                                placeholder="Especifique el tipo de máquina..." 
-                                                value={mac.custom_type || (mac.machine_type !== 'Otro' ? mac.machine_type : '')} 
-                                                onChange={e => updateMachine(index, 'custom_type', e.target.value)} 
-                                            />
+                                            <input className={`${inputClass} mt-2 border-orange-300 bg-orange-50`} placeholder="Especifique el tipo de máquina..." value={mac.custom_type || (mac.machine_type !== 'Otro' ? mac.machine_type : '')} onChange={e => updateMachine(index, 'custom_type', e.target.value)} />
                                         )}
                                     </div>
-
                                     <div className="grid grid-cols-2 gap-3">
                                         <div><label className={labelClass}>Marca</label><input className={inputClass} value={mac.brand} onChange={e => updateMachine(index, 'brand', e.target.value)} /></div>
                                         <div><label className={labelClass}>Modelo</label><input className={inputClass} value={mac.model} onChange={e => updateMachine(index, 'model', e.target.value)} /></div>
                                     </div>
-
                                     <div className="grid grid-cols-2 gap-3">
                                         <div><label className={labelClass}>Antigüedad (Años)</label><input type="number" className={inputClass} value={mac.age} onChange={e => updateMachine(index, 'age', e.target.value)} /></div>
-                                        <div>
-                                            <label className={labelClass}>Estado</label>
-                                            <select className={selectClass} value={mac.status} onChange={e => updateMachine(index, 'status', e.target.value)}>
-                                                {MACHINE_STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                                            </select>
-                                        </div>
+                                        <div><label className={labelClass}>Estado</label><select className={selectClass} value={mac.status} onChange={e => updateMachine(index, 'status', e.target.value)}>{MACHINE_STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
                                     </div>
-
                                     <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label className={labelClass}>Contrato Mant.</label>
-                                            <select className={selectClass} value={mac.maintenance_contract} onChange={e => updateMachine(index, 'maintenance_contract', e.target.value)}>
-                                                <option>No</option><option>Sí</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className={labelClass}>¿Sustitución?</label>
-                                            <select className={`${selectClass} ${mac.substitution_potential === 'Sí' ? 'bg-green-50 border-green-300 text-green-700 font-bold' : ''}`} value={mac.substitution_potential} onChange={e => updateMachine(index, 'substitution_potential', e.target.value)}>
-                                                <option>No</option><option>Sí</option>
-                                            </select>
-                                        </div>
+                                        <div><label className={labelClass}>Contrato Mant.</label><select className={selectClass} value={mac.maintenance_contract} onChange={e => updateMachine(index, 'maintenance_contract', e.target.value)}><option>No</option><option>Sí</option></select></div>
+                                        <div><label className={labelClass}>¿Sustitución?</label><select className={`${selectClass} ${mac.substitution_potential === 'Sí' ? 'bg-green-50 border-green-300 text-green-700 font-bold' : ''}`} value={mac.substitution_potential} onChange={e => updateMachine(index, 'substitution_potential', e.target.value)}><option>No</option><option>Sí</option></select></div>
                                     </div>
                                 </div>
                             </div>
@@ -303,9 +274,7 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                         <div className="flex gap-3 mt-8 pt-4 border-t"><Button onClick={goToPrevTab} icon={ArrowLeft} variant="ghost" className="flex-1">Anterior</Button><Button onClick={goToNextTab} icon={ArrowRight} variant="secondary" className="flex-1">Siguiente</Button></div>
                     </Card>
                 )}
-
                 {activeTab === 'necesidades' && (<Card className="p-4 md:p-8 border-l-4 border-l-blue-600"><SectionHeader title="Necesidades" icon={Search} /><div className="grid grid-cols-1 gap-6"><div><label className="block text-sm font-bold text-slate-700 mb-3">Puntos de Dolor</label><div className="space-y-2">{['Ahorro de costes', 'Renovación maquinaria', 'Mejorar estabilidad', 'Servicio Técnico', 'Reducir plástico'].map(opt => (<label key={opt} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200"><input type="checkbox" checked={formData.pain_points?.includes(opt)} onChange={() => handleMultiSelect('pain_points', opt)} className="w-5 h-5 text-blue-600 rounded"/><span className="text-sm font-medium text-slate-700">{opt}</span></label>))}</div></div><div><label className={labelClass}>Presupuesto</label><select className={selectClass} value={formData.budget} onChange={e => handleChange('budget', e.target.value)}><option>Sin presupuesto fijo</option><option>Partida anual</option><option>Solo precio bajo</option></select></div></div><div className="flex gap-3 mt-6 pt-4 border-t"><Button onClick={goToPrevTab} icon={ArrowLeft} variant="ghost" className="flex-1">Anterior</Button><Button onClick={goToNextTab} icon={ArrowRight} variant="secondary" className="flex-1">Siguiente</Button></div></Card>)}
-                
                 {activeTab === 'cierre' && (<Card className="p-4 md:p-8 border-l-4 border-l-red-500 bg-red-50/10"><SectionHeader title="Próximos pasos" icon={Calendar} /><div className="grid grid-cols-1 gap-6 mb-6"><div><label className="block text-sm font-bold text-slate-700 mb-3">Interés real:</label><div className="grid grid-cols-1 gap-2">{['Visita Técnica', 'Oferta Materiales', 'Propuesta Maquinaria', 'Mantenimiento'].map(opt => (<label key={opt} className="flex items-center gap-2 p-3 bg-white rounded border border-slate-200 shadow-sm"><input type="checkbox" checked={formData.detected_interest?.includes(opt)} onChange={() => handleMultiSelect('detected_interest', opt)} className="text-red-600 rounded w-5 h-5"/> <span className="text-sm font-bold text-slate-700">{opt}</span></label>))}</div></div><div><label className={labelClass}>Resumen</label><textarea className={`${inputClass} h-24 resize-none`} placeholder="Resumen..." value={formData.solution_summary} onChange={e => handleChange('solution_summary', e.target.value)} /></div></div><div className="bg-white p-4 rounded-xl border border-red-200 shadow-sm"><div className="grid grid-cols-1 gap-4"><div><label className="block text-xs font-bold text-red-700 uppercase mb-1">ACCIÓN</label><select className="w-full p-3 border border-red-200 rounded-lg bg-red-50 font-bold" value={formData.next_action} onChange={e => handleChange('next_action', e.target.value)}><option>Llamada</option><option>Visita</option><option>Oferta</option><option>Cierre</option></select></div><div className="grid grid-cols-2 gap-3"><div><label className="block text-xs font-bold text-red-700 uppercase mb-1">FECHA</label><input type="date" required className="w-full p-3 border border-red-200 rounded-lg" value={formData.next_action_date} onChange={e => handleChange('next_action_date', e.target.value)} /></div><div><label className={labelClass}>HORA</label><input type="time" required className="w-full p-3 border border-red-200 rounded-lg" value={formData.next_action_time} onChange={e => handleChange('next_action_time', e.target.value)} /></div></div><div><label className={labelClass}>RESPONSABLE</label><input className="w-full p-3 border border-red-200 rounded-lg" value={formData.responsible} onChange={e => handleChange('responsible', e.target.value)} /></div></div></div><div className="flex flex-col-reverse gap-3 mt-6 pt-4 border-t border-red-200"><Button onClick={goToPrevTab} icon={ArrowLeft} variant="ghost" className="w-full">Anterior</Button><Button variant="primary" type="submit" icon={CheckCircle2} className="w-full py-4 text-lg bg-gradient-to-r from-red-600 to-red-700 border-none shadow-xl">FINALIZAR</Button></div></Card>)}
             </form>
         </div>
