@@ -16,7 +16,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V7.9.5.1 - Maquinas"; 
+const APP_VERSION = "V8.0 - Multi-Machine Support"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
 const SUPER_ADMIN_EMAIL = "jesusblanco@mmesl.com";
@@ -126,12 +126,10 @@ const AdminView = () => {
     );
 };
 
-// 2. VISTA DASHBOARD (MODIFICADO CON FILTRO)
+// 2. VISTA DASHBOARD
 const DashboardView = ({ contacts, userRole, session, setEditingContact, setView, userProfile }: any) => {
-    // Estado para el filtro del Dashboard
     const [filterUserId, setFilterUserId] = useState<string>('all');
 
-    // Lógica para obtener lista única de comerciales (para el filtro)
     const uniqueSalesUsers = Array.from(new Set(contacts.map((c: any) => c.user_id)))
         .map(id => {
             const contact = contacts.find((c: any) => c.user_id === id);
@@ -140,19 +138,15 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
         })
         .filter(u => u.label !== 'Desconocido');
 
-    // Lógica de filtrado PRINCIPAL del Dashboard
     let relevantContacts = contacts;
     if (userRole === 'sales') {
-        // Si soy comercial, SOLO veo lo mío (ignoro el filtro)
         relevantContacts = contacts.filter((c: any) => c.user_id === session.user.id);
     } else {
-        // Si soy Admin/Jefe, aplico el filtro del dropdown
         if (filterUserId !== 'all') {
             relevantContacts = contacts.filter((c: any) => c.user_id === filterUserId);
         }
     }
 
-    // Cálculos basados en los contactos filtrados
     const total = relevantContacts.length;
     const clients = relevantContacts.filter((c: any) => c.sap_status === 'Cliente SAP').length;
     const leads = relevantContacts.filter((c: any) => ['Lead SAP', 'Nuevo Prospecto'].includes(c.sap_status)).length;
@@ -174,7 +168,6 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
                 </div>
              </div>
 
-             {/* FILTRO DE DASHBOARD (SOLO ADMINS/JEFES) */}
              {(userRole !== 'sales') && (
                  <div className="flex items-center gap-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
                     <Filter size={14} className="text-slate-400 ml-1" />
