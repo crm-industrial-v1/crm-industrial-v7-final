@@ -16,7 +16,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V7.9.2 - Super Admin Protection"; 
+const APP_VERSION = "V7.9.3 - Fix Lock Tooltip"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
 // Este usuario nunca podrá ser modificado de rol ni borrado accidentalmente
@@ -115,7 +115,12 @@ const AdminView = () => {
                                 <tr key={u.id} className="hover:bg-blue-50/30 transition-colors group">
                                     <td className="p-4 font-medium text-slate-700 flex items-center gap-2">
                                         {u.email}
-                                        {isSuperAdmin && <Lock size={12} className="text-amber-500" title="Super Admin Protegido"/>}
+                                        {/* CORRECCIÓN AQUÍ: Envolvemos el icono en un span para poner el title */}
+                                        {isSuperAdmin && (
+                                            <span title="Super Admin Protegido">
+                                                <Lock size={12} className="text-amber-500"/>
+                                            </span>
+                                        )}
                                     </td>
                                     
                                     {/* CAMPO NOMBRE EDITABLE */}
@@ -143,7 +148,6 @@ const AdminView = () => {
                                                 'bg-white text-slate-700 border-slate-200'
                                             } ${isSuperAdmin ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                                             value={u.role} 
-                                            // AQUÍ ESTÁ LA PROTECCIÓN: Si es tu email, se deshabilita
                                             disabled={isSuperAdmin} 
                                             onChange={(e) => updateUserField(u.id, 'role', e.target.value, u.role)}
                                         >
