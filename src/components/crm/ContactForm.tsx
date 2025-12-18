@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+// CORRECCIÓN AQUÍ: Añadidos X y Plus que faltaban
 import { 
   Search, Briefcase, Factory, Package, Calendar, 
-  ArrowRight, ArrowLeft, X, Plus, CheckCircle2, Wrench
+  ArrowRight, ArrowLeft, CheckCircle2, Wrench, MessageCircle,
+  X, Plus 
 } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
@@ -191,13 +193,7 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                 <p className="text-xs text-slate-500">Complete la información paso a paso.</p>
             </div>
 
-            {/* TABS NAVEGACIÓN - PEGADO ARRIBA (SIN ESPACIOS) */}
-            {/* CAMBIOS CLAVE AQUÍ:
-                1. -mt-2: Sube la barra para comerse el espacio blanco del padre.
-                2. md:mt-0: En PC (md) quita ese margen negativo para que se vea normal.
-                3. rounded-none: En móvil quita los bordes redondos para que encaje con la cabecera.
-                4. md:rounded-xl: En PC vuelve a poner los bordes bonitos.
-            */}
+            {/* TABS NAVEGACIÓN */}
             <div className="sticky top-0 z-50 py-2 bg-slate-100/95 backdrop-blur-md shadow-sm border-b border-slate-200/50 transition-all -mt-2 md:mt-0 w-full rounded-none md:rounded-xl">
                 <div className="bg-white md:rounded-xl shadow-sm border border-slate-200 p-2 overflow-x-auto no-scrollbar">
                     <div className="flex md:grid md:grid-cols-7 gap-2 min-w-max md:min-w-0"> 
@@ -236,7 +232,34 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                     </Card>
                 )}
 
-                {activeTab === 'negocio' && (<Card className="p-4 md:p-8"><SectionHeader title="Negocio" icon={Factory} /><div className="grid grid-cols-1 gap-4"><div><label className={labelClass}>Sector</label><select className={selectClass} value={formData.sector} onChange={e => handleChange('sector', e.target.value)}>{SECTORS.map(s => <option key={s} value={s}>{s}</option>)}</select></div><div><label className={labelClass}>Volumen</label><select className={selectClass} value={formData.volume} onChange={e => handleChange('volume', e.target.value)}><option>Bajo</option><option>Medio</option><option>Alto</option></select></div><div><label className={labelClass}>Embalaje</label><select className={selectClass} value={formData.packaging_mgmt} onChange={e => handleChange('packaging_mgmt', e.target.value)}><option>Interno</option><option>Externalizado</option><option>Mixto</option></select></div><div><label className={labelClass}>Productos</label><input className={inputClass} value={formData.main_products} onChange={e => handleChange('main_products', e.target.value)} /></div></div><div className="flex gap-3 mt-6 pt-4 border-t"><Button onClick={goToPrevTab} icon={ArrowLeft} variant="ghost" className="flex-1">Anterior</Button><Button onClick={goToNextTab} icon={ArrowRight} variant="secondary" className="flex-1">Siguiente</Button></div></Card>)}
+                {activeTab === 'negocio' && (
+                    <Card className="p-4 md:p-8">
+                        <SectionHeader title="Negocio" icon={Factory} />
+                        
+                        {/* --- GUÍA CONVERSACIONAL --- */}
+                        <div className="mb-8 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                            <h4 className="text-sm font-bold text-blue-800 flex items-center gap-2 mb-3">
+                                <MessageCircle size={16}/> Guía para la conversación
+                            </h4>
+                            <div className="space-y-3 text-sm text-slate-600">
+                                <p><strong>1. Romper el hielo:</strong> <span className="italic">"¿A qué os dedicáis exactamente aquí? ¿Cuál es vuestro producto estrella?"</span></p>
+                                <p><strong>2. Entender el volumen:</strong> <span className="italic">"¿Qué cantidad de palets o paquetes sacáis al día/semana?"</span></p>
+                                <p><strong>3. Detectar procesos:</strong> <span className="italic">"¿El embalaje lo hacéis vosotros o viene ya listo? ¿Tenéis picos de trabajo?"</span></p>
+                            </div>
+                            <div className="mt-3 pt-3 border-t border-blue-100 text-xs text-blue-600 font-medium">
+                                🎯 <strong>Objetivo:</strong> Entender su escala real y si necesitan automatizar el final de línea.
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4">
+                            <div><label className={labelClass}>Sector</label><select className={selectClass} value={formData.sector} onChange={e => handleChange('sector', e.target.value)}>{SECTORS.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+                            <div><label className={labelClass}>Volumen</label><select className={selectClass} value={formData.volume} onChange={e => handleChange('volume', e.target.value)}><option>Bajo</option><option>Medio</option><option>Alto</option></select></div>
+                            <div><label className={labelClass}>Embalaje</label><select className={selectClass} value={formData.packaging_mgmt} onChange={e => handleChange('packaging_mgmt', e.target.value)}><option>Interno</option><option>Externalizado</option><option>Mixto</option></select></div>
+                            <div><label className={labelClass}>Productos Principales</label><input className={inputClass} placeholder="Ej: Cítricos, Conservas, Piezas..." value={formData.main_products} onChange={e => handleChange('main_products', e.target.value)} /></div>
+                        </div>
+                        <div className="flex gap-3 mt-6 pt-4 border-t"><Button onClick={goToPrevTab} icon={ArrowLeft} variant="ghost" className="flex-1">Anterior</Button><Button onClick={goToNextTab} icon={ArrowRight} variant="secondary" className="flex-1">Siguiente</Button></div>
+                    </Card>
+                )}
                 
                 {activeTab === 'materiales' && (<Card className="p-4 md:p-8 bg-slate-50"><SectionHeader title="Materiales de Consumo" icon={Package} />{materials.map((mat, index) => (<div key={index} className="rounded-xl border border-slate-200 mb-6 bg-white overflow-hidden shadow-sm animate-in slide-in-from-bottom-2"><div className="p-3 border-b bg-slate-50 flex justify-between items-center"><span className="text-xs font-bold px-2 py-1 rounded bg-blue-100 text-blue-700">MATERIAL {index + 1}</span><button type="button" onClick={() => removeMaterial(index)} className="text-slate-400 hover:text-red-500 transition-colors"><X size={18}/></button></div><div className="p-4 grid grid-cols-1 gap-4"><div><label className={labelClass}>Tipo</label><select className={selectClass} value={mat.material_type} onChange={e => updateMaterial(index, 'material_type', e.target.value)}><option value="">Seleccionar...</option>{MATERIAL_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}</select></div><div><label className={labelClass}>ID / Medidas</label><input className={inputClass} value={mat.id_medidas} onChange={e => updateMaterial(index, 'id_medidas', e.target.value)} /></div><div className="grid grid-cols-2 gap-3"><div><label className={labelClass}>Consumo</label><input className={inputClass} value={mat.consumption} onChange={e => updateMaterial(index, 'consumption', e.target.value)} /></div><div><label className={labelClass}>Precio</label><input className={inputClass} value={mat.price} onChange={e => updateMaterial(index, 'price', e.target.value)} /></div></div><div><label className={labelClass}>Proveedor</label><input className={inputClass} value={mat.supplier} onChange={e => updateMaterial(index, 'supplier', e.target.value)} /></div><div><label className={labelClass}>Notas</label><input className={inputClass} value={mat.notes} onChange={e => updateMaterial(index, 'notes', e.target.value)} /></div></div></div>))}<button type="button" onClick={addMaterial} className="w-full py-4 border-2 border-dashed border-blue-300 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"><Plus size={20} /> Añadir Otra Material</button><div className="flex gap-3 mt-8 pt-4 border-t"><Button onClick={goToPrevTab} icon={ArrowLeft} variant="ghost" className="flex-1">Anterior</Button><Button onClick={goToNextTab} icon={ArrowRight} variant="secondary" className="flex-1">Siguiente</Button></div></Card>)}
                 
