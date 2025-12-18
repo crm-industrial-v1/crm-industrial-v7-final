@@ -16,7 +16,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V7.9.5 - Dashboard Filters & Logo"; 
+const APP_VERSION = "V7.9.5.1 - Maquinas"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
 const SUPER_ADMIN_EMAIL = "jesusblanco@mmesl.com";
