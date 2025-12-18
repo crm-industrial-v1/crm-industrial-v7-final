@@ -3,7 +3,7 @@ import { supabase } from './lib/supabase';
 import { 
   LayoutDashboard, Users, UserPlus, Search, Trash2, Edit, 
   Briefcase, CheckCircle2, Clock, Target, FileText, 
-  LogOut, Shield, UserCog, Menu, Loader2, Calendar
+  LogOut, Shield, UserCog, Menu, Loader2, Calendar, User
 } from 'lucide-react';
 
 // --- IMPORTAMOS EL NUEVO LOGO ---
@@ -16,7 +16,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V7.7 - LogoMME"; 
+const APP_VERSION = "V7.8 - User Names Support"; 
 
 // --- ESTILOS COMUNES ---
 const inputClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm text-sm";
@@ -25,16 +25,17 @@ const selectClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text
 
 // --- COMPONENTES AUXILIARES ---
 
-// 1. VISTA ADMINISTRACIÓN
+// 1. VISTA ADMINISTRACIÓN (MODIFICADA PARA INCLUIR NOMBRE)
 const AdminView = () => {
     const [users, setUsers] = useState<any[]>([]);
     const [newEmail, setNewEmail] = useState('');
     const [newPass, setNewPass] = useState('');
+    const [newName, setNewName] = useState(''); // Nuevo estado para nombre
     const [newRole, setNewRole] = useState('sales');
 
     useEffect(() => {
         const fetchUsers = async () => {
-            const { data } = await supabase.from('profiles').select('*');
+            const { data } = await supabase.from('profiles').select('*').order('email');
             setUsers(data || []);
         };
         fetchUsers();
@@ -42,25 +43,37 @@ const AdminView = () => {
 
     const createUser = async (e: React.FormEvent) => {
         e.preventDefault();
-        const { data, error } = await supabase.auth.signUp({ email: newEmail, password: newPass, options: { data: { role: newRole } } });
+        // 1. Crear Auth
+        const { data, error } = await supabase.auth.signUp({ 
+            email: newEmail, 
+            password: newPass, 
+            options: { data: { role: newRole, full_name: newName } } 
+        });
+
         if (error) {
             alert('Error: ' + error.message);
         } else if (data.user) {
-            await supabase.from('profiles').insert([{ id: data.user.id, email: newEmail, role: newRole }]);
+            // 2. Crear Perfil con nombre
+            await supabase.from('profiles').insert([{ 
+                id: data.user.id, 
+                email: newEmail, 
+                role: newRole,
+                full_name: newName 
+            }]);
+            
             alert('Usuario creado.');
-            setNewEmail(''); setNewPass('');
-            const { data: newData } = await supabase.from('profiles').select('*');
+            setNewEmail(''); setNewPass(''); setNewName('');
+            const { data: newData } = await supabase.from('profiles').select('*').order('email');
             setUsers(newData || []);
         }
     };
 
-    const updateUserRole = async (id: string, role: string) => {
-        const { error } = await supabase.from('profiles').update({ role }).eq('id', id);
+    const updateUserField = async (id: string, field: string, value: string) => {
+        const { error } = await supabase.from('profiles').update({ [field]: value }).eq('id', id);
         if (!error) {
-             setUsers(users.map(u => u.id === id ? { ...u, role } : u));
-             alert('Rol actualizado');
+             setUsers(users.map(u => u.id === id ? { ...u, [field]: value } : u));
         } else {
-            alert('Error al actualizar rol');
+            alert('Error al actualizar');
         }
     };
 
@@ -68,20 +81,50 @@ const AdminView = () => {
         <div className="space-y-6 animate-in fade-in pb-24">
              <Card className="p-6 border-l-4 border-l-purple-600">
                 <SectionHeader title="Gestión de Usuarios" icon={Shield} subtitle="Crear usuarios y asignar roles" />
-                <form onSubmit={createUser} className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                    <div className="md:col-span-1"><label className={labelClass}>Email Nuevo</label><input type="email" required className={inputClass} value={newEmail} onChange={e => setNewEmail(e.target.value)} /></div>
-                    <div className="md:col-span-1"><label className={labelClass}>Contraseña</label><input type="text" required className={inputClass} value={newPass} onChange={e => setNewPass(e.target.value)} /></div>
+                
+                {/* FORMULARIO DE CREACIÓN */}
+                <form onSubmit={createUser} className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                    <div className="md:col-span-1"><label className={labelClass}>Email</label><input type="email" required className={inputClass} value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="email@..." /></div>
+                    <div className="md:col-span-1"><label className={labelClass}>Nombre</label><input type="text" required className={inputClass} value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ej: Juan Pérez" /></div>
+                    <div className="md:col-span-1"><label className={labelClass}>Contraseña</label><input type="text" required className={inputClass} value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="Min 6 car." /></div>
                     <div className="md:col-span-1"><label className={labelClass}>Rol</label><select className={selectClass} value={newRole} onChange={e => setNewRole(e.target.value)}><option value="sales">Comercial</option><option value="manager">Jefe Ventas</option><option value="admin">Administrador</option></select></div>
                     <Button type="submit" icon={UserPlus} className="w-full">Crear</Button>
                 </form>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-slate-100 text-slate-500 uppercase font-bold"><tr><th className="p-3">Email</th><th className="p-3">Rol</th></tr></thead>
-                        <tbody>
+
+                {/* TABLA DE USUARIOS */}
+                <div className="overflow-x-auto rounded-lg border border-slate-200">
+                    <table className="w-full text-sm text-left bg-white">
+                        <thead className="bg-slate-100 text-slate-500 uppercase font-bold text-xs">
+                            <tr>
+                                <th className="p-3">Email</th>
+                                <th className="p-3">Nombre Completo</th>
+                                <th className="p-3">Rol</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
                             {users.map(u => (
-                                <tr key={u.id} className="border-b"><td className="p-3 font-medium">{u.email}</td><td className="p-3">
-                                    <select className="p-2 border rounded bg-white w-full" value={u.role} onChange={(e) => updateUserRole(u.id, e.target.value)}><option value="sales">Comercial</option><option value="manager">Jefe</option><option value="admin">Admin</option></select>
-                                </td></tr>
+                                <tr key={u.id} className="hover:bg-slate-50">
+                                    <td className="p-3 font-medium text-slate-700">{u.email}</td>
+                                    <td className="p-3">
+                                        <input 
+                                            className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none py-1 transition-colors"
+                                            value={u.full_name || ''}
+                                            placeholder="Sin nombre..."
+                                            onChange={(e) => updateUserField(u.id, 'full_name', e.target.value)}
+                                        />
+                                    </td>
+                                    <td className="p-3">
+                                        <select 
+                                            className="p-1.5 border rounded bg-white w-full text-xs" 
+                                            value={u.role} 
+                                            onChange={(e) => updateUserField(u.id, 'role', e.target.value)}
+                                        >
+                                            <option value="sales">Comercial</option>
+                                            <option value="manager">Jefe</option>
+                                            <option value="admin">Admin</option>
+                                        </select>
+                                    </td>
+                                </tr>
                             ))}
                         </tbody>
                     </table>
@@ -91,8 +134,8 @@ const AdminView = () => {
     );
 };
 
-// 2. VISTA DASHBOARD
-const DashboardView = ({ contacts, userRole, session, setEditingContact, setView }: any) => {
+// 2. VISTA DASHBOARD (MODIFICADA SALUDO)
+const DashboardView = ({ contacts, userRole, session, setEditingContact, setView, userProfile }: any) => {
     const relevantContacts = userRole === 'sales' 
         ? contacts.filter((c: any) => c.user_id === session.user.id) 
         : contacts;
@@ -103,14 +146,22 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
     const today = new Date().toISOString().split('T')[0];
     const pending = relevantContacts.filter((c: any) => c.next_action_date && c.next_action_date <= today).length;
 
+    // Lógica del nombre para el saludo
+    const displayName = userProfile?.full_name || userProfile?.email?.split('@')[0] || 'Usuario';
+
     return (
       <div className="space-y-6 animate-in fade-in duration-500 w-full overflow-hidden pb-24">
         <div className="flex justify-between items-center px-1">
              <div>
-                <h2 className="text-lg md:text-2xl font-bold text-slate-800">Hola, {userRole === 'admin' ? 'Admin' : userRole === 'manager' ? 'Jefe' : 'Comercial'}</h2>
-                <p className="text-xs text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded inline-block mt-1">{APP_VERSION}</p>
+                {/* AQUÍ ESTÁ EL CAMBIO DEL SALUDO */}
+                <h2 className="text-lg md:text-2xl font-bold text-slate-800 flex items-center gap-2">
+                    Hola, <span className="text-blue-600">{displayName}</span>
+                </h2>
+                <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded uppercase">{userRole === 'sales' ? 'Comercial' : userRole === 'manager' ? 'Jefe Ventas' : 'Administrador'}</span>
+                    <span className="text-[10px] text-slate-400">{APP_VERSION}</span>
+                </div>
              </div>
-             {userRole === 'sales' && <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-bold">Mis Datos</span>}
              {userRole !== 'sales' && <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-bold">Vista Global</span>}
         </div>
         
@@ -135,7 +186,6 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
             </div>
           </Card>
           <Card className="p-6 flex flex-col justify-center items-center text-center bg-gradient-to-br from-white to-slate-50">
-             {/* --- LOGO EN DASHBOARD --- */}
              <div className="p-4 mb-4"><img src={logoM} alt="Logo" className="w-16 h-16 object-contain opacity-90" /></div>
              <h3 className="font-bold text-lg text-slate-800 mb-2">Comenzar Trabajo</h3>
              <Button onClick={() => { setEditingContact(null); setView('form'); }} icon={UserPlus} className="px-6 py-3 shadow-xl w-full md:w-auto">Nuevo Cuestionario</Button>
@@ -166,12 +216,15 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
         c.contact_person?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    // Obtener lista única de usuarios para el filtro, usando AHORA el nombre real si existe
     const uniqueSalesUsers = Array.from(new Set(contacts.map((c: any) => c.user_id)))
         .map(id => {
             const contact = contacts.find((c: any) => c.user_id === id);
-            return { id, email: contact?.profiles?.email || 'Desconocido' };
+            // Priorizamos mostrar el nombre completo, si no, el email
+            const name = contact?.profiles?.full_name || contact?.profiles?.email || 'Desconocido';
+            return { id, label: name };
         })
-        .filter(u => u.email !== 'Desconocido');
+        .filter(u => u.label !== 'Desconocido');
 
     return (
       <div className="space-y-4 animate-in fade-in duration-500 pb-24 w-full overflow-hidden">
@@ -197,7 +250,7 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
                        >
                            <option value="">Filtrar por usuario...</option>
                            {uniqueSalesUsers.map((u: any) => (
-                               <option key={u.id} value={u.id}>{u.email}</option>
+                               <option key={u.id} value={u.id}>{u.label}</option>
                            ))}
                        </select>
                    </div>
@@ -218,14 +271,14 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
                         <h3 className="font-bold text-base text-slate-900 truncate">{c.fiscal_name}</h3>
                         <div className="flex gap-2">
                             <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border w-fit ${c.sap_status === 'Cliente SAP' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>{c.sap_status}</span>
-                            {(userRole !== 'sales' && c.profiles?.email) && (
+                            {(userRole !== 'sales' && c.profiles) && (
                                 <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border bg-slate-100 text-slate-500 border-slate-200 flex items-center gap-1 max-w-[120px] truncate">
-                                    <UserCog size={10}/> {c.profiles.email.split('@')[0]}
+                                    <User size={10}/> {c.profiles.full_name || c.profiles.email.split('@')[0]}
                                 </span>
                             )}
                         </div>
                     </div>
-                    <div className="flex flex-col gap-1 text-sm text-slate-600"><span className="flex items-center gap-2 truncate"><Users size={14} className="text-slate-400 shrink-0"/> {c.contact_person || 'Sin contacto'}</span><span className="flex items-center gap-2 truncate"><Briefcase size={14} className="text-slate-400 shrink-0"/> <span className="text-slate-500 text-xs">Titular:</span> {c.profiles?.email || 'N/A'}</span></div>
+                    <div className="flex flex-col gap-1 text-sm text-slate-600"><span className="flex items-center gap-2 truncate"><Users size={14} className="text-slate-400 shrink-0"/> {c.contact_person || 'Sin contacto'}</span><span className="flex items-center gap-2 truncate"><Briefcase size={14} className="text-slate-400 shrink-0"/> <span className="text-slate-500 text-xs">Titular:</span> {c.profiles?.full_name || c.profiles?.email || 'N/A'}</span></div>
                   </div>
                   <div className="flex flex-col gap-2 shrink-0"><button onClick={() => { setEditingContact(c); setView('form'); }} className="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 rounded-lg"><Edit size={18}/></button>{(userRole === 'admin' || c.user_id === session.user.id) && (<button onClick={() => handleDelete(c.id)} className="p-2 text-slate-400 hover:text-red-600 bg-slate-50 rounded-lg"><Trash2 size={18}/></button>)}</div>
                 </div>
@@ -241,6 +294,9 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
 export default function App() {
   const [session, setSession] = useState<any>(null);
   const [userRole, setUserRole] = useState<string>('sales');
+  // Estado para guardar el perfil completo (nombre, rol, etc.)
+  const [userProfile, setUserProfile] = useState<any>(null);
+  
   const [view, setView] = useState('dashboard');
   const [contacts, setContacts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -261,7 +317,7 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) fetchUserProfile(session.user.id);
-      else { setContacts([]); setUserRole('sales'); }
+      else { setContacts([]); setUserRole('sales'); setUserProfile(null); }
     });
 
     return () => subscription.unsubscribe();
@@ -275,8 +331,11 @@ export default function App() {
   }, [session]);
 
   async function fetchUserProfile(userId: string) {
-    const { data } = await supabase.from('profiles').select('role').eq('id', userId).single();
-    if (data) setUserRole(data.role);
+    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    if (data) {
+        setUserRole(data.role);
+        setUserProfile(data); // Guardamos el perfil completo para tener el nombre
+    }
   }
 
   async function handleLogin(e: React.FormEvent) {
@@ -297,9 +356,10 @@ export default function App() {
   async function fetchContacts() {
     try {
       setLoading(true);
+      // Ahora traemos también full_name y role de la tabla profiles
       const { data, error } = await supabase
         .from('industrial_contacts')
-        .select('*, profiles:user_id(email)')
+        .select('*, profiles:user_id(email, full_name, role)')
         .order('created_at', { ascending: false });
         
       if (error) throw error;
@@ -326,7 +386,6 @@ export default function App() {
         <div className="h-screen w-full flex items-center justify-center bg-slate-100 p-4">
             <Card className="max-w-md p-8 shadow-2xl w-11/12">
                 <div className="flex justify-center mb-6">
-                    {/* LOGO M */}
                     <img src={logoM} alt="Logo" className="w-20 h-20 object-contain" />
                 </div>
                 <h1 className="text-2xl font-bold text-center text-slate-900 mb-2">Cuestionario de Ventas</h1>
@@ -346,7 +405,6 @@ export default function App() {
   return (
     <div className="flex h-screen bg-slate-100 font-sans text-slate-900 w-full fixed inset-0 max-w-[100vw] overflow-x-hidden">
        <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 flex flex-col shadow-2xl shrink-0`}>
-          {/* HEADER BARRA LATERAL (MODIFICADO) */}
           <div className="p-6 border-b border-slate-800 flex items-center gap-3 bg-slate-950">
              <img src={logoM} alt="Logo" className="w-10 h-10 object-contain brightness-0 invert" />
              <div className="min-w-0">
@@ -359,7 +417,6 @@ export default function App() {
              <button onClick={() => { setView('list'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'list')}><Users size={20}/> <span>Base de Datos</span></button>
              {userRole === 'admin' && (<><div className="pt-4 pb-2 px-4"><p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Admin</p></div><button onClick={() => { setView('admin'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'admin')}><UserCog size={20}/> <span>Gestión Usuarios</span></button></>)}
              <div className="pt-6 pb-2 px-4"><p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Acciones</p></div>
-             {/* BOTÓN RENOMBRADO */}
              <button onClick={() => { setEditingContact(null); setView('form'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'form')}><UserPlus size={20}/> <span>Cuestionario</span></button>
           </nav>
           <div className="p-4 bg-slate-950 border-t border-slate-800 space-y-2">
@@ -367,7 +424,6 @@ export default function App() {
           </div>
        </aside>
        <main className="flex-1 flex flex-col h-screen overflow-hidden relative w-full bg-slate-50">
-          {/* HEADER MÓVIL (MODIFICADO) */}
           <header className="bg-white border-b border-slate-200 p-3 flex items-center justify-between lg:hidden shadow-sm z-10 shrink-0 h-14">
              <button onClick={() => setIsSidebarOpen(true)} className="text-slate-600 p-2 active:bg-slate-100 rounded"><Menu size={24} /></button>
              <span className="font-bold text-slate-800">Cuestionario de Ventas</span><div className="w-8"></div>
@@ -375,7 +431,7 @@ export default function App() {
           
           <div className="flex-1 overflow-y-auto overflow-x-hidden p-0 md:p-8 w-full scroll-smooth bg-slate-50">
             <div className="p-1 md:p-0 pb-20"> 
-                {view === 'dashboard' && <DashboardView contacts={contacts} userRole={userRole} session={session} setEditingContact={setEditingContact} setView={setView} />}
+                {view === 'dashboard' && <DashboardView contacts={contacts} userRole={userRole} userProfile={userProfile} session={session} setEditingContact={setEditingContact} setView={setView} />}
                 
                 {view === 'list' && (
                     <ListView 
