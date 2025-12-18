@@ -3,7 +3,7 @@ import { supabase } from './lib/supabase';
 import { 
   LayoutDashboard, Users, UserPlus, Search, Trash2, Edit, 
   Briefcase, CheckCircle2, Clock, Target, FileText, 
-  LogOut, Shield, UserCog, Menu, Loader2, Calendar, User
+  LogOut, Shield, UserCog, Menu, Loader2, Calendar, User, Lock
 } from 'lucide-react';
 
 // --- IMPORTAMOS EL NUEVO LOGO ---
@@ -16,7 +16,11 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V7.9.1 - Build Fix"; 
+const APP_VERSION = "V7.9.2 - Super Admin Protection"; 
+
+// --- CONFIGURACIÓN SUPER ADMIN ---
+// Este usuario nunca podrá ser modificado de rol ni borrado accidentalmente
+const SUPER_ADMIN_EMAIL = "jesusblanco@mmesl.com";
 
 // --- ESTILOS COMUNES ---
 const inputClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm text-sm";
@@ -25,7 +29,7 @@ const selectClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text
 
 // --- COMPONENTES AUXILIARES ---
 
-// 1. VISTA ADMINISTRACIÓN (MEJORADA PARA EDICIÓN)
+// 1. VISTA ADMINISTRACIÓN (CON PROTECCIÓN SUPER ADMIN)
 const AdminView = () => {
     const [users, setUsers] = useState<any[]>([]);
     const [newEmail, setNewEmail] = useState('');
@@ -68,17 +72,15 @@ const AdminView = () => {
 
     // Función optimizada para guardar cambios
     const updateUserField = async (id: string, field: string, value: string, currentValue: string) => {
-        // Solo guardamos si el valor realmente ha cambiado para evitar llamadas innecesarias
         if (value === currentValue) return;
 
         const { error } = await supabase.from('profiles').update({ [field]: value }).eq('id', id);
         if (!error) {
-             // Actualizamos el estado local para reflejar el cambio
              setUsers(users.map(u => u.id === id ? { ...u, [field]: value } : u));
-             console.log("Guardado:", field, value); // Feedback en consola
+             console.log("Guardado:", field, value); 
         } else {
             alert('Error al actualizar: ' + error.message);
-            fetchUsers(); // Revertimos cambios si falla
+            fetchUsers(); 
         }
     };
 
@@ -107,9 +109,14 @@ const AdminView = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {users.map(u => (
+                            {users.map(u => {
+                                const isSuperAdmin = u.email === SUPER_ADMIN_EMAIL;
+                                return (
                                 <tr key={u.id} className="hover:bg-blue-50/30 transition-colors group">
-                                    <td className="p-4 font-medium text-slate-700">{u.email}</td>
+                                    <td className="p-4 font-medium text-slate-700 flex items-center gap-2">
+                                        {u.email}
+                                        {isSuperAdmin && <Lock size={12} className="text-amber-500" title="Super Admin Protegido"/>}
+                                    </td>
                                     
                                     {/* CAMPO NOMBRE EDITABLE */}
                                     <td className="p-3">
@@ -118,27 +125,26 @@ const AdminView = () => {
                                                 className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white rounded px-2 py-1.5 transition-all outline-none text-slate-800"
                                                 defaultValue={u.full_name || ''}
                                                 placeholder="Clic para añadir nombre..."
-                                                // onBlur es la clave: Guarda solo cuando dejas de escribir
                                                 onBlur={(e) => updateUserField(u.id, 'full_name', e.target.value, u.full_name)}
                                                 onKeyDown={(e) => {
-                                                    if (e.key === 'Enter') {
-                                                        e.currentTarget.blur(); // Guardar al pulsar Enter
-                                                    }
+                                                    if (e.key === 'Enter') e.currentTarget.blur();
                                                 }}
                                             />
                                             <Edit size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 opacity-0 group-hover:opacity-100 pointer-events-none" />
                                         </div>
                                     </td>
 
-                                    {/* CAMPO ROL EDITABLE */}
+                                    {/* CAMPO ROL EDITABLE (PROTEGIDO PARA SUPER ADMIN) */}
                                     <td className="p-3">
                                         <select 
-                                            className={`p-1.5 border rounded w-full text-xs font-bold cursor-pointer outline-none focus:ring-2 focus:ring-blue-500 ${
+                                            className={`p-1.5 border rounded w-full text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 ${
                                                 u.role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-200' :
                                                 u.role === 'manager' ? 'bg-orange-50 text-orange-700 border-orange-200' :
                                                 'bg-white text-slate-700 border-slate-200'
-                                            }`}
+                                            } ${isSuperAdmin ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                                             value={u.role} 
+                                            // AQUÍ ESTÁ LA PROTECCIÓN: Si es tu email, se deshabilita
+                                            disabled={isSuperAdmin} 
                                             onChange={(e) => updateUserField(u.id, 'role', e.target.value, u.role)}
                                         >
                                             <option value="sales">Comercial</option>
@@ -147,11 +153,11 @@ const AdminView = () => {
                                         </select>
                                     </td>
                                 </tr>
-                            ))}
+                            )})} 
                         </tbody>
                     </table>
                 </div>
-                <p className="text-[10px] text-slate-400 mt-2 text-right">* Pulsa sobre el nombre o rol para editar. Los cambios se guardan automáticamente.</p>
+                <p className="text-[10px] text-slate-400 mt-2 text-right">* Pulsa sobre el nombre o rol para editar. El Super Admin no puede cambiar su rol.</p>
              </Card>
         </div>
     );
