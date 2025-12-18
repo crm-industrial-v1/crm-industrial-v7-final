@@ -16,7 +16,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V7.9.3 - Fix Lock Tooltip"; 
+const APP_VERSION = "V7.9.4 - Delete Users Feature"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
 // Este usuario nunca podrá ser modificado de rol ni borrado accidentalmente
@@ -29,7 +29,7 @@ const selectClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text
 
 // --- COMPONENTES AUXILIARES ---
 
-// 1. VISTA ADMINISTRACIÓN (CON PROTECCIÓN SUPER ADMIN)
+// 1. VISTA ADMINISTRACIÓN (CON BORRADO DE USUARIOS)
 const AdminView = () => {
     const [users, setUsers] = useState<any[]>([]);
     const [newEmail, setNewEmail] = useState('');
@@ -70,7 +70,6 @@ const AdminView = () => {
         }
     };
 
-    // Función optimizada para guardar cambios
     const updateUserField = async (id: string, field: string, value: string, currentValue: string) => {
         if (value === currentValue) return;
 
@@ -84,10 +83,32 @@ const AdminView = () => {
         }
     };
 
+    // --- NUEVA FUNCIÓN DE BORRADO ---
+    const deleteUser = async (id: string, email: string) => {
+        if (email === SUPER_ADMIN_EMAIL) {
+            alert("Acción no permitida: No puedes borrar al Super Admin.");
+            return;
+        }
+        
+        const confirmMsg = `¿Estás SEGURO de que quieres eliminar a ${email}?\n\nEsta acción borrará su perfil y le impedirá el acceso.`;
+        if (!window.confirm(confirmMsg)) return;
+
+        // Borramos de la tabla profiles (esto revocará su acceso visual en la app)
+        const { error } = await supabase.from('profiles').delete().eq('id', id);
+
+        if (error) {
+            alert('Error al eliminar: ' + error.message);
+        } else {
+            // Actualizamos la lista visualmente
+            setUsers(users.filter(u => u.id !== id));
+            alert('Usuario eliminado correctamente.');
+        }
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in pb-24">
              <Card className="p-6 border-l-4 border-l-purple-600">
-                <SectionHeader title="Gestión de Usuarios" icon={Shield} subtitle="Crear y Editar usuarios" />
+                <SectionHeader title="Gestión de Usuarios" icon={Shield} subtitle="Crear, Editar y Eliminar usuarios" />
                 
                 {/* FORMULARIO DE CREACIÓN */}
                 <form onSubmit={createUser} className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
@@ -106,6 +127,7 @@ const AdminView = () => {
                                 <th className="p-4">Email</th>
                                 <th className="p-4">Nombre Completo (Editable)</th>
                                 <th className="p-4">Rol (Editable)</th>
+                                <th className="p-4 text-right">Acciones</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -115,7 +137,6 @@ const AdminView = () => {
                                 <tr key={u.id} className="hover:bg-blue-50/30 transition-colors group">
                                     <td className="p-4 font-medium text-slate-700 flex items-center gap-2">
                                         {u.email}
-                                        {/* CORRECCIÓN AQUÍ: Envolvemos el icono en un span para poner el title */}
                                         {isSuperAdmin && (
                                             <span title="Super Admin Protegido">
                                                 <Lock size={12} className="text-amber-500"/>
@@ -123,7 +144,6 @@ const AdminView = () => {
                                         )}
                                     </td>
                                     
-                                    {/* CAMPO NOMBRE EDITABLE */}
                                     <td className="p-3">
                                         <div className="relative">
                                             <input 
@@ -131,15 +151,12 @@ const AdminView = () => {
                                                 defaultValue={u.full_name || ''}
                                                 placeholder="Clic para añadir nombre..."
                                                 onBlur={(e) => updateUserField(u.id, 'full_name', e.target.value, u.full_name)}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter') e.currentTarget.blur();
-                                                }}
+                                                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
                                             />
                                             <Edit size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 opacity-0 group-hover:opacity-100 pointer-events-none" />
                                         </div>
                                     </td>
 
-                                    {/* CAMPO ROL EDITABLE (PROTEGIDO PARA SUPER ADMIN) */}
                                     <td className="p-3">
                                         <select 
                                             className={`p-1.5 border rounded w-full text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 ${
@@ -156,12 +173,25 @@ const AdminView = () => {
                                             <option value="admin">Administrador</option>
                                         </select>
                                     </td>
+
+                                    {/* COLUMNA DE ACCIONES (BORRAR) */}
+                                    <td className="p-3 text-right">
+                                        {!isSuperAdmin && (
+                                            <button 
+                                                onClick={() => deleteUser(u.id, u.email)}
+                                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                title="Eliminar usuario"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        )}
+                                    </td>
                                 </tr>
                             )})} 
                         </tbody>
                     </table>
                 </div>
-                <p className="text-[10px] text-slate-400 mt-2 text-right">* Pulsa sobre el nombre o rol para editar. El Super Admin no puede cambiar su rol.</p>
+                <p className="text-[10px] text-slate-400 mt-2 text-right">* El Super Admin no puede ser eliminado ni modificado.</p>
              </Card>
         </div>
     );
