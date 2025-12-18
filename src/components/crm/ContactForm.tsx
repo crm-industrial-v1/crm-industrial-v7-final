@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-// CORRECCIÓN AQUÍ: Añadidos X y Plus que faltaban
 import { 
   Search, Briefcase, Factory, Package, Calendar, 
   ArrowRight, ArrowLeft, CheckCircle2, Wrench, MessageCircle,
-  X, Plus 
+  X, Plus, Truck, Settings
 } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
@@ -26,18 +25,40 @@ const MACHINE_TYPE_OPTIONS = [
 
 const MACHINE_STATUS_OPTIONS = ["Óptimo", "Medio", "Pésimo"];
 
-const SECTORS = [
-  "Agroalimentario", "Logística y Transporte", "Industria Metal", 
-  "Construcción", "Químico / Farmacéutico", "E-commerce / Retail", "Otro"
+// --- NUEVAS OPCIONES ESTANDARIZADAS (PERFIL PRODUCCIÓN) ---
+const SECTOR_OPTIONS = [
+  "Alimentación - Frescos",
+  "Alimentación - Secos/Procesados",
+  "Bebidas y Líquidos",
+  "Cosmética y Farmacia",
+  "Industrial / Automoción",
+  "E-commerce / Retail",
+  "Químico / Agrícola",
+  "Otro"
 ];
 
+const VOLUME_OPTIONS = [
+  "< 50 pallets/año (Bajo)",
+  "50 - 300 pallets/año (Pyme)",
+  "300 - 1.200 pallets/año (Media)",
+  "1.200 - 5.000 pallets/año (Grande)",
+  "> 5.000 pallets/año (Key Account)"
+];
+
+const OPERATING_MODEL_OPTIONS = [
+  "100% Interno (Fabrican y envasan)",
+  "Maquilador / Envasador",
+  "Marca (Solo gestionan, envasa otro)"
+];
+
+// --- ORDEN DE PESTAÑAS ACTUALIZADO: Diagnóstico ANTES de Materiales ---
 const TABS = [
     { id: 'sap', label: 'Identificación SAP', icon: Search },
     { id: 'registro', label: 'Datos Registro', icon: Briefcase },
-    { id: 'negocio', label: 'Negocio', icon: Factory },
+    { id: 'negocio', label: 'Perfil Prod.', icon: Factory }, 
+    { id: 'necesidades', label: 'Diagnóstico', icon: Search }, // <-- AHORA VA AQUÍ
     { id: 'materiales', label: 'Materiales', icon: Package },
     { id: 'maquinaria', label: 'Maquinaria', icon: Wrench }, 
-    { id: 'necesidades', label: 'Necesidades', icon: Search },
     { id: 'cierre', label: 'Próximos pasos', icon: Calendar } 
 ];
 
@@ -59,13 +80,30 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
     
     // Estado principal del contacto
     const [formData, setFormData] = useState({
+        // ID y SAP
         sap_status: 'Nuevo Prospecto', sap_id: '',
+        
+        // Datos Contacto
         fiscal_name: '', cif: '', contact_person: '', job_title: '', phone: '', email: '', 
         address: '', city: '', state: '', 
-        sector: 'Agroalimentario', main_products: '', volume: 'Medio', packaging_mgmt: 'Mixto',
-        pain_points: [] as string[], budget: 'Sin presupuesto fijo',
-        detected_interest: [] as string[], solution_summary: '', 
-        next_action: 'Llamada de seguimiento', next_action_date: '', next_action_time: '09:00', responsible: ''
+        
+        // Perfil Producción
+        sector: '', main_products: '', volume: '', packaging_mgmt: '',
+        
+        // Diagnóstico (NUEVOS CAMPOS)
+        process_description: '', 
+        bottlenecks: '', 
+        production_peaks: '',
+
+        // Necesidades y Cierre
+        pain_points: [] as string[], 
+        budget: 'Sin presupuesto fijo',
+        detected_interest: [] as string[], 
+        solution_summary: '', 
+        next_action: 'Llamada de seguimiento', 
+        next_action_date: '', 
+        next_action_time: '09:00', 
+        responsible: ''
     });
 
     const [materials, setMaterials] = useState<any[]>([]);
@@ -146,6 +184,7 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
             }
 
             if (contactId) {
+                // 1. Materiales
                 await supabase.from('contact_materials').delete().eq('contact_id', contactId);
                 const matsToSave = materials.filter(m => m.material_type).map(m => ({
                     contact_id: contactId,
@@ -158,6 +197,7 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                 }));
                 if (matsToSave.length > 0) await supabase.from('contact_materials').insert(matsToSave);
 
+                // 2. Maquinaria
                 await supabase.from('contact_machinery').delete().eq('contact_id', contactId);
                 const macsToSave = machines.filter(m => m.machine_type).map(m => ({
                     contact_id: contactId,
@@ -173,7 +213,7 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
             }
             onSuccess();
         } catch (err: any) {
-            alert('Error: ' + err.message);
+            alert('Error al guardar: ' + err.message);
         } finally {
             setSaving(false);
         }
@@ -210,8 +250,11 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6 w-full px-0.5 mt-4 md:mt-0">
+                
+                {/* 1. SAP */}
                 {activeTab === 'sap' && (<Card className="p-4 md:p-8"><SectionHeader title="Identificación SAP" icon={Search} /><div className="grid grid-cols-1 gap-4"><div><label className={labelClass}>Estado</label><select className={selectClass} value={formData.sap_status} onChange={e => handleChange('sap_status', e.target.value)}><option>Nuevo Prospecto</option><option>Lead SAP</option><option>Cliente SAP</option></select></div><div><label className={labelClass}>Código SAP</label><input className={inputClass} placeholder="Ej: C000450" value={formData.sap_id} onChange={e => handleChange('sap_id', e.target.value)} /></div></div><div className="flex justify-end mt-6 pt-4 border-t"><Button onClick={goToNextTab} icon={ArrowRight} variant="secondary">Siguiente</Button></div></Card>)}
                 
+                {/* 2. DATOS REGISTRO */}
                 {activeTab === 'registro' && (
                     <Card className="p-4 md:p-8">
                         <SectionHeader title="Datos" icon={Briefcase} />
@@ -232,37 +275,151 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                     </Card>
                 )}
 
+                {/* 3. PERFIL PRODUCCIÓN */}
                 {activeTab === 'negocio' && (
                     <Card className="p-4 md:p-8">
-                        <SectionHeader title="Negocio" icon={Factory} />
+                        <SectionHeader title="Perfil de Producción" icon={Factory} />
                         
-                        {/* --- GUÍA CONVERSACIONAL --- */}
-                        <div className="mb-8 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                            <h4 className="text-sm font-bold text-blue-800 flex items-center gap-2 mb-3">
-                                <MessageCircle size={16}/> Guía para la conversación
+                        <div className="mb-6 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                            <h4 className="text-sm font-bold text-blue-800 flex items-center gap-2 mb-2">
+                                <MessageCircle size={16}/> Preguntas Clave
                             </h4>
-                            <div className="space-y-3 text-sm text-slate-600">
-                                <p><strong>1. Romper el hielo:</strong> <span className="italic">"¿A qué os dedicáis exactamente aquí? ¿Cuál es vuestro producto estrella?"</span></p>
-                                <p><strong>2. Entender el volumen:</strong> <span className="italic">"¿Qué cantidad de palets o paquetes sacáis al día/semana?"</span></p>
-                                <p><strong>3. Detectar procesos:</strong> <span className="italic">"¿El embalaje lo hacéis vosotros o viene ya listo? ¿Tenéis picos de trabajo?"</span></p>
+                            <ul className="list-disc list-inside text-sm text-slate-600 space-y-1 ml-1">
+                                <li>"¿Qué productos fabricáis o manipuláis aquí?"</li>
+                                <li>"¿Qué volumen movéis? ¿Cuántos camiones/pallets salen a la semana?"</li>
+                                <li>"¿El envasado lo hacéis vosotros o lo externalizáis?"</li>
+                            </ul>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-6">
+                            <div>
+                                <label className={labelClass}>Sector / Tipo de Producto</label>
+                                <select className={selectClass} value={formData.sector} onChange={e => handleChange('sector', e.target.value)}>
+                                    <option value="">-- Selecciona Sector --</option>
+                                    {SECTOR_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                </select>
                             </div>
-                            <div className="mt-3 pt-3 border-t border-blue-100 text-xs text-blue-600 font-medium">
-                                🎯 <strong>Objetivo:</strong> Entender su escala real y si necesitan automatizar el final de línea.
+
+                            <div>
+                                <label className={labelClass} title="Ayuda a clasificar la cuenta por potencial">
+                                    <span className="flex items-center gap-1"><Truck size={14}/> Volumen Anual (Pallets)</span>
+                                </label>
+                                <select className={`${selectClass} font-medium`} value={formData.volume} onChange={e => handleChange('volume', e.target.value)}>
+                                    <option value="">-- Selecciona Rango --</option>
+                                    {VOLUME_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className={labelClass}>
+                                    <span className="flex items-center gap-1"><Settings size={14}/> Gestión del Proceso</span>
+                                </label>
+                                <select className={selectClass} value={formData.packaging_mgmt} onChange={e => handleChange('packaging_mgmt', e.target.value)}>
+                                    <option value="">-- Selecciona Modelo --</option>
+                                    {OPERATING_MODEL_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className={labelClass}>Notas de Producto</label>
+                                <textarea 
+                                    className={`${inputClass} h-20 resize-none`} 
+                                    placeholder="Detalles específicos (ej: 'Naranjas en mallas de 2kg', 'Piezas de automoción pesadas'...)" 
+                                    value={formData.main_products} 
+                                    onChange={e => handleChange('main_products', e.target.value)} 
+                                />
+                            </div>
+                        </div>
+                        <div className="flex gap-3 mt-8 pt-4 border-t"><Button onClick={goToPrevTab} icon={ArrowLeft} variant="ghost" className="flex-1">Anterior</Button><Button onClick={goToNextTab} icon={ArrowRight} variant="secondary" className="flex-1">Siguiente</Button></div>
+                    </Card>
+                )}
+
+                {/* 4. DIAGNÓSTICO (AHORA EN CUARTO LUGAR) */}
+                {activeTab === 'necesidades' && (
+                    <Card className="p-4 md:p-8 border-l-4 border-l-purple-600">
+                        <SectionHeader title="Diagnóstico del Proceso" icon={Search} />
+                        
+                        <div className="mb-6 bg-purple-50 p-4 rounded-xl border border-purple-100">
+                            <h4 className="text-sm font-bold text-purple-800 flex items-center gap-2 mb-2">
+                                <MessageCircle size={16}/> Objetivo: Detectar Dolor
+                            </h4>
+                            <p className="text-xs text-slate-600 mb-2">
+                                No vendas todavía. Haz que el cliente te cuente sus problemas.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-6">
+                            
+                            {/* 1. PROCESO ACTUAL */}
+                            <div>
+                                <label className={labelClass}>¿Cómo es el proceso actual? (Flujo)</label>
+                                <textarea 
+                                    className={`${inputClass} h-20`} 
+                                    placeholder="Desde que sale de producción hasta que queda embalado..." 
+                                    value={formData.process_description || ''} 
+                                    onChange={e => handleChange('process_description', e.target.value)} 
+                                />
+                            </div>
+
+                            {/* 2. CUELLOS DE BOTELLA */}
+                            <div>
+                                <label className={labelClass}>¿Dónde están los problemas / Cuellos de botella?</label>
+                                <textarea 
+                                    className={`${inputClass} h-20 border-red-200 bg-red-50/30`} 
+                                    placeholder="Roturas, paradas de línea, falta de personal, material defectuoso..." 
+                                    value={formData.bottlenecks || ''} 
+                                    onChange={e => handleChange('bottlenecks', e.target.value)} 
+                                />
+                            </div>
+
+                            {/* 3. PICOS DE PRODUCCIÓN */}
+                            <div>
+                                <label className={labelClass}>¿Tenéis picos de producción?</label>
+                                <input 
+                                    className={inputClass} 
+                                    placeholder="Ej: Sí, en campaña de Navidad se nos acumula el stock..." 
+                                    value={formData.production_peaks || ''} 
+                                    onChange={e => handleChange('production_peaks', e.target.value)} 
+                                />
+                            </div>
+
+                            <div className="border-t border-slate-200 my-2"></div>
+
+                            {/* CHECKLIST RÁPIDO */}
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-3">Etiquetado Rápido (Pain Points)</label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                    {['Ahorro de costes', 'Renovación maquinaria', 'Mejorar estabilidad', 'Servicio Técnico', 'Reducir plástico', 'Exceso de mermas', 'Automatización'].map(opt => (
+                                        <label key={opt} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-white transition-colors cursor-pointer">
+                                            <input type="checkbox" checked={formData.pain_points?.includes(opt)} onChange={() => handleMultiSelect('pain_points', opt)} className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"/>
+                                            <span className="text-sm font-medium text-slate-700">{opt}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className={labelClass}>Presupuesto / Expectativa</label>
+                                <select className={selectClass} value={formData.budget} onChange={e => handleChange('budget', e.target.value)}>
+                                    <option>Sin presupuesto fijo</option>
+                                    <option>Partida anual asignada</option>
+                                    <option>Buscan solo precio bajo (Low Cost)</option>
+                                    <option>Inversión por ahorro (ROI)</option>
+                                </select>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-4">
-                            <div><label className={labelClass}>Sector</label><select className={selectClass} value={formData.sector} onChange={e => handleChange('sector', e.target.value)}>{SECTORS.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
-                            <div><label className={labelClass}>Volumen</label><select className={selectClass} value={formData.volume} onChange={e => handleChange('volume', e.target.value)}><option>Bajo</option><option>Medio</option><option>Alto</option></select></div>
-                            <div><label className={labelClass}>Embalaje</label><select className={selectClass} value={formData.packaging_mgmt} onChange={e => handleChange('packaging_mgmt', e.target.value)}><option>Interno</option><option>Externalizado</option><option>Mixto</option></select></div>
-                            <div><label className={labelClass}>Productos Principales</label><input className={inputClass} placeholder="Ej: Cítricos, Conservas, Piezas..." value={formData.main_products} onChange={e => handleChange('main_products', e.target.value)} /></div>
+                        <div className="flex gap-3 mt-6 pt-4 border-t">
+                            <Button onClick={goToPrevTab} icon={ArrowLeft} variant="ghost" className="flex-1">Anterior</Button>
+                            <Button onClick={goToNextTab} icon={ArrowRight} variant="secondary" className="flex-1">Siguiente</Button>
                         </div>
-                        <div className="flex gap-3 mt-6 pt-4 border-t"><Button onClick={goToPrevTab} icon={ArrowLeft} variant="ghost" className="flex-1">Anterior</Button><Button onClick={goToNextTab} icon={ArrowRight} variant="secondary" className="flex-1">Siguiente</Button></div>
                     </Card>
                 )}
                 
+                {/* 5. MATERIALES */}
                 {activeTab === 'materiales' && (<Card className="p-4 md:p-8 bg-slate-50"><SectionHeader title="Materiales de Consumo" icon={Package} />{materials.map((mat, index) => (<div key={index} className="rounded-xl border border-slate-200 mb-6 bg-white overflow-hidden shadow-sm animate-in slide-in-from-bottom-2"><div className="p-3 border-b bg-slate-50 flex justify-between items-center"><span className="text-xs font-bold px-2 py-1 rounded bg-blue-100 text-blue-700">MATERIAL {index + 1}</span><button type="button" onClick={() => removeMaterial(index)} className="text-slate-400 hover:text-red-500 transition-colors"><X size={18}/></button></div><div className="p-4 grid grid-cols-1 gap-4"><div><label className={labelClass}>Tipo</label><select className={selectClass} value={mat.material_type} onChange={e => updateMaterial(index, 'material_type', e.target.value)}><option value="">Seleccionar...</option>{MATERIAL_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}</select></div><div><label className={labelClass}>ID / Medidas</label><input className={inputClass} value={mat.id_medidas} onChange={e => updateMaterial(index, 'id_medidas', e.target.value)} /></div><div className="grid grid-cols-2 gap-3"><div><label className={labelClass}>Consumo</label><input className={inputClass} value={mat.consumption} onChange={e => updateMaterial(index, 'consumption', e.target.value)} /></div><div><label className={labelClass}>Precio</label><input className={inputClass} value={mat.price} onChange={e => updateMaterial(index, 'price', e.target.value)} /></div></div><div><label className={labelClass}>Proveedor</label><input className={inputClass} value={mat.supplier} onChange={e => updateMaterial(index, 'supplier', e.target.value)} /></div><div><label className={labelClass}>Notas</label><input className={inputClass} value={mat.notes} onChange={e => updateMaterial(index, 'notes', e.target.value)} /></div></div></div>))}<button type="button" onClick={addMaterial} className="w-full py-4 border-2 border-dashed border-blue-300 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"><Plus size={20} /> Añadir Otra Material</button><div className="flex gap-3 mt-8 pt-4 border-t"><Button onClick={goToPrevTab} icon={ArrowLeft} variant="ghost" className="flex-1">Anterior</Button><Button onClick={goToNextTab} icon={ArrowRight} variant="secondary" className="flex-1">Siguiente</Button></div></Card>)}
                 
+                {/* 6. MAQUINARIA */}
                 {activeTab === 'maquinaria' && (
                     <Card className="p-4 md:p-8 bg-slate-50">
                         <SectionHeader title="Parque de Maquinaria" icon={Wrench} />
@@ -303,8 +460,7 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                     </Card>
                 )}
                 
-                {activeTab === 'necesidades' && (<Card className="p-4 md:p-8 border-l-4 border-l-blue-600"><SectionHeader title="Necesidades" icon={Search} /><div className="grid grid-cols-1 gap-6"><div><label className="block text-sm font-bold text-slate-700 mb-3">Puntos de Dolor</label><div className="space-y-2">{['Ahorro de costes', 'Renovación maquinaria', 'Mejorar estabilidad', 'Servicio Técnico', 'Reducir plástico'].map(opt => (<label key={opt} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200"><input type="checkbox" checked={formData.pain_points?.includes(opt)} onChange={() => handleMultiSelect('pain_points', opt)} className="w-5 h-5 text-blue-600 rounded"/><span className="text-sm font-medium text-slate-700">{opt}</span></label>))}</div></div><div><label className={labelClass}>Presupuesto</label><select className={selectClass} value={formData.budget} onChange={e => handleChange('budget', e.target.value)}><option>Sin presupuesto fijo</option><option>Partida anual</option><option>Solo precio bajo</option></select></div></div><div className="flex gap-3 mt-6 pt-4 border-t"><Button onClick={goToPrevTab} icon={ArrowLeft} variant="ghost" className="flex-1">Anterior</Button><Button onClick={goToNextTab} icon={ArrowRight} variant="secondary" className="flex-1">Siguiente</Button></div></Card>)}
-                
+                {/* 7. CIERRE */}
                 {activeTab === 'cierre' && (
                     <Card className="p-4 md:p-8 border-l-4 border-l-red-500 bg-red-50/10">
                         <SectionHeader title="Próximos pasos" icon={Calendar} />
@@ -330,9 +486,7 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                             </div>
                         </div>
 
-                        {/* --- BOTONERA FINAL --- */}
                         <div className="flex flex-col gap-3 mt-8 pt-4 border-t border-red-200">
-                            {/* AQUÍ USAMOS LA VARIABLE 'saving' PARA EVITAR EL ERROR DE VERCEL Y DAR FEEDBACK */}
                             <Button 
                                 variant="primary" 
                                 type="submit" 
