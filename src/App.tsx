@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, UserPlus, Search, Trash2, Edit, 
   Briefcase, CheckCircle2, Clock, Target, FileText, 
   LogOut, Shield, UserCog, Menu, Loader2, Calendar, User, Lock, Filter, KeyRound,
-  ArrowLeft, ArrowRight, Phone, BarChart2
+  ArrowLeft, ArrowRight, Phone, BarChart2, CheckSquare, X, CalendarPlus, Save
 } from 'lucide-react';
 
 // --- IMPORTAMOS EL NUEVO LOGO ---
@@ -17,7 +17,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V10.1 - Agenda & KPIs (Safe)"; 
+const APP_VERSION = "V10.4 - Gestión Tareas Pro"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
 const SUPER_ADMIN_EMAIL = "jesusblanco@mmesl.com";
@@ -28,6 +28,67 @@ const labelClass = "block text-xs font-bold text-slate-500 uppercase tracking-wi
 const selectClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm appearance-none text-sm";
 
 // --- COMPONENTES AUXILIARES ---
+
+// 0. NUEVO: MODAL DE GESTIÓN DE TAREA
+const TaskActionModal = ({ isOpen, onClose, onAction, taskTitle }: any) => {
+    const [report, setReport] = useState('');
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
+                <div className="bg-slate-50 p-4 border-b border-slate-100 flex justify-between items-center">
+                    <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                        <CheckSquare className="text-blue-600" size={18}/> Gestionar Tarea
+                    </h3>
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
+                </div>
+                
+                <div className="p-5 space-y-4">
+                    <div>
+                        <p className="text-xs font-bold text-slate-500 uppercase mb-1">Tarea Actual</p>
+                        <p className="text-sm font-medium text-slate-800 bg-slate-50 p-2 rounded border border-slate-200">{taskTitle}</p>
+                    </div>
+
+                    <div>
+                        <label className={labelClass}>Resultado / Reporte (Opcional)</label>
+                        <textarea 
+                            className="w-full p-3 border border-slate-300 rounded-lg text-sm h-24 focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                            placeholder="Escribe aquí qué ha pasado en la llamada o visita..."
+                            value={report}
+                            onChange={(e) => setReport(e.target.value)}
+                        />
+                    </div>
+
+                    <div className="flex flex-col gap-2 pt-2">
+                        <button 
+                            onClick={() => onAction('complete_new', report)}
+                            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-colors"
+                        >
+                            <CalendarPlus size={16}/> Finalizar y Agendar Nueva
+                        </button>
+                        
+                        <div className="grid grid-cols-2 gap-2">
+                            <button 
+                                onClick={() => onAction('complete', report)}
+                                className="py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-colors"
+                            >
+                                <CheckCircle2 size={16}/> Solo Finalizar
+                            </button>
+                            <button 
+                                onClick={() => onAction('delete', '')}
+                                className="py-3 bg-white hover:bg-red-50 text-slate-600 hover:text-red-600 border border-slate-200 hover:border-red-200 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-colors"
+                            >
+                                <Trash2 size={16}/> Borrar Tarea
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 // 1. VISTA ADMINISTRACIÓN
 const AdminView = () => {
@@ -127,7 +188,7 @@ const AdminView = () => {
     );
 };
 
-// 2. VISTA DASHBOARD (KPIs Calidad)
+// 2. VISTA DASHBOARD
 const DashboardView = ({ contacts, userRole, session, setEditingContact, setView, userProfile }: any) => {
     const [filterUserId, setFilterUserId] = useState<string>('all');
 
@@ -154,7 +215,7 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
     const today = new Date().toISOString().split('T')[0];
     const pending = relevantContacts.filter((c: any) => c.next_action_date && c.next_action_date <= today).length;
 
-    // Nuevos KPIs de Calidad
+    // KPIs de Calidad
     const withMaterials = relevantContacts.filter((c: any) => c.contact_materials && c.contact_materials.length > 0).length;
     const withMachines = relevantContacts.filter((c: any) => c.contact_machinery && c.contact_machinery.length > 0).length;
     const materialsPct = total > 0 ? Math.round((withMaterials / total) * 100) : 0;
@@ -193,7 +254,6 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
              )}
         </div>
         
-        {/* KPIs Generales */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full">
           <Card className="p-3 md:p-4 border-l-4 border-l-blue-600 flex justify-between items-center"><div><p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase">Total</p><h3 className="text-xl md:text-2xl font-bold text-slate-900">{total}</h3></div><div className="bg-blue-50 p-2 rounded-lg text-blue-600"><Users size={18}/></div></Card>
           <Card className="p-3 md:p-4 border-l-4 border-l-emerald-500 flex justify-between items-center"><div><p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase">Clientes</p><h3 className="text-xl md:text-2xl font-bold text-slate-900">{clients}</h3></div><div className="bg-emerald-50 p-2 rounded-lg text-emerald-600"><CheckCircle2 size={18}/></div></Card>
@@ -201,7 +261,6 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
           <Card className={`p-3 md:p-4 border-l-4 flex justify-between items-center ${pending > 0 ? 'border-l-red-500 bg-red-50/30' : 'border-l-slate-300'}`}><div><p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase">Pendiente Hoy</p><h3 className={`text-xl md:text-2xl font-bold ${pending > 0 ? 'text-red-600' : 'text-slate-900'}`}>{pending}</h3></div><div className="bg-white p-2 rounded-lg text-slate-400 border border-slate-100"><Clock size={18}/></div></Card>
         </div>
 
-        {/* KPIs de Calidad del Dato (NUEVO) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
             <Card className="p-6">
                 <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-slate-800"><BarChart2 className="text-purple-600"/> Calidad de Fichas</h3>
@@ -242,11 +301,58 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
     );
 };
 
-// 4. VISTA AGENDA SEMANAL (NUEVA)
-const AgendaView = ({ contacts, setEditingContact, setView }: any) => {
+// 4. VISTA AGENDA SEMANAL (ACTUALIZADA)
+const AgendaView = ({ contacts, setEditingContact, setView, onActionComplete }: any) => {
     const [weekOffset, setWeekOffset] = useState(0);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [selectedTask, setSelectedTask] = useState<any>(null);
 
-    // Obtener días de la semana (Lunes a Viernes)
+    // Manejador de acciones del modal
+    const handleModalAction = async (type: 'delete' | 'complete' | 'complete_new', report: string) => {
+        if (!selectedTask) return;
+
+        try {
+            let updates: any = {};
+            const today = new Date().toISOString().split('T')[0];
+            const timeNow = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+
+            // Construir el reporte que se guardará en "Resumen" (solution_summary)
+            const logEntry = `\n[${today} ${timeNow}] ✅ COMPLETADO: ${selectedTask.next_action}\n> Reporte: ${report || 'Sin comentarios'}\n-------------------`;
+
+            if (type === 'delete') {
+                updates = { next_action_date: null, next_action_time: null, next_action: '' }; // Limpiar todo
+            } else {
+                // Completar (guardar log y limpiar fecha)
+                const currentSummary = selectedTask.solution_summary || '';
+                updates = { 
+                    next_action_date: null, 
+                    next_action_time: null,
+                    solution_summary: currentSummary + logEntry
+                };
+            }
+
+            // Actualizar Supabase
+            const { error } = await supabase.from('industrial_contacts').update(updates).eq('id', selectedTask.id);
+            if (error) throw error;
+
+            // Refrescar datos
+            await onActionComplete();
+            setModalOpen(false);
+
+            // Si es "Agendar Nueva", redirigir al formulario
+            if (type === 'complete_new') {
+                // Pequeño hack: actualizamos el objeto localmente para que al abrir el form ya tenga el resumen actualizado
+                const updatedTask = { ...selectedTask, ...updates };
+                setEditingContact(updatedTask);
+                setView('form');
+            }
+
+        } catch (error: any) {
+            alert("Error: " + error.message);
+        }
+    };
+
+    // Obtener días de la semana
     const getWeekDays = (offset: number) => {
         const curr = new Date();
         const day = curr.getDay();
@@ -270,6 +376,15 @@ const AgendaView = ({ contacts, setEditingContact, setView }: any) => {
 
     return (
         <div className="space-y-4 animate-in fade-in pb-24 h-full flex flex-col">
+            
+            {/* Modal de Acción */}
+            <TaskActionModal 
+                isOpen={modalOpen} 
+                onClose={() => setModalOpen(false)} 
+                taskTitle={selectedTask?.next_action || 'Tarea'} 
+                onAction={handleModalAction}
+            />
+
             <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm shrink-0 gap-4">
                 <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                     <Calendar className="text-blue-600"/> Agenda Semanal
@@ -304,9 +419,17 @@ const AgendaView = ({ contacts, setEditingContact, setView }: any) => {
                                     if (action.includes("oferta") || action.includes("presupuesto")) { borderColor = "border-l-orange-500"; icon = <FileText size={12}/>; }
 
                                     return (
-                                        <div key={task.id} onClick={() => { setEditingContact(task); setView('form'); }} className={`bg-white p-3 rounded-lg border border-slate-100 border-l-4 ${borderColor} shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-95`}>
+                                        <div key={task.id} onClick={() => { setEditingContact(task); setView('form'); }} className={`bg-white p-3 rounded-lg border border-slate-100 border-l-4 ${borderColor} shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-95 group relative`}>
                                             <div className="flex justify-between items-start mb-1">
                                                 <span className="text-[10px] font-bold bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 flex items-center gap-1">{icon} {task.next_action_time?.slice(0,5)}</span>
+                                                {/* BOTÓN COMPLETAR QUE ABRE MODAL */}
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); setSelectedTask(task); setModalOpen(true); }}
+                                                    className="text-slate-300 hover:text-emerald-600 p-1 rounded hover:bg-emerald-50 transition-colors"
+                                                    title="Gestionar Tarea"
+                                                >
+                                                    <CheckSquare size={16} />
+                                                </button>
                                             </div>
                                             <p className="text-xs font-bold text-slate-800 line-clamp-1">{task.fiscal_name}</p>
                                             <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1 capitalize">{task.next_action}</p>
@@ -671,7 +794,8 @@ export default function App() {
             <div className="p-1 md:p-0 pb-20 w-full"> 
                 {view === 'dashboard' && <DashboardView contacts={contacts} userRole={userRole} userProfile={userProfile} session={session} setEditingContact={setEditingContact} setView={setView} />}
                 
-                {view === 'agenda' && <AgendaView contacts={contacts} setEditingContact={setEditingContact} setView={setView} />}
+                {/* VISTA AGENDA NUEVA CON MODAL */}
+                {view === 'agenda' && <AgendaView contacts={contacts} setEditingContact={setEditingContact} setView={setView} onActionComplete={fetchContacts} />}
 
                 {view === 'list' && (
                     <ListView 
