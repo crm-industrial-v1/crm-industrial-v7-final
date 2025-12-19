@@ -16,7 +16,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V8.5 - prueba9"; 
+const APP_VERSION = "V8.6 - email"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
 const SUPER_ADMIN_EMAIL = "jesusblanco@mmesl.com";
@@ -364,6 +364,25 @@ export default function App() {
     setAuthLoading(false);
   }
 
+  // --- FUNCIÓN AÑADIDA: RECUPERACIÓN DE CONTRASEÑA CORRECTA ---
+  async function handleResetPassword() {
+    if (!email) {
+        return alert("Por favor, introduce tu email en el campo de arriba para poder enviarte el correo de recuperación.");
+    }
+    setAuthLoading(true);
+    // AQUÍ ESTÁ LA CORRECCIÓN DE LA URL
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'https://crm-industrial-v7-final.vercel.app/',
+    });
+    setAuthLoading(false);
+    
+    if (error) {
+        alert("Error: " + error.message);
+    } else {
+        alert("¡Enviado! Revisa tu bandeja de entrada (y spam) para restablecer tu contraseña.");
+    }
+  }
+
   async function handleLogout() {
     setLoading(true);
     await supabase.auth.signOut();
@@ -414,6 +433,18 @@ export default function App() {
                     <div><label className={labelClass}>Email Corporativo</label><input type="email" required className={inputClass} value={email} onChange={e => setEmail(e.target.value)} placeholder="usuario@empresa.com" /></div>
                     <div><label className={labelClass}>Contraseña</label><input type="password" required className={inputClass} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" /></div>
                     <Button type="submit" className="w-full py-3" disabled={authLoading}>{authLoading ? <Loader2 className="animate-spin"/> : 'Entrar'}</Button>
+                    
+                    {/* BOTÓN NUEVO PARA RECUPERAR CONTRASEÑA */}
+                    <div className="text-center pt-2">
+                        <button 
+                            type="button" 
+                            onClick={handleResetPassword}
+                            className="text-xs text-blue-600 hover:text-blue-800 font-bold underline"
+                            disabled={authLoading}
+                        >
+                           ¿Olvidaste tu contraseña?
+                        </button>
+                    </div>
                 </form>
             </Card>
         </div>
