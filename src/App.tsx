@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, UserPlus, Search, Trash2, Edit, 
   Briefcase, CheckCircle2, Clock, Target, FileText, 
   LogOut, Shield, UserCog, Menu, Loader2, Calendar, User, Lock, Filter, KeyRound,
-  ArrowLeft, ArrowRight, Phone, BarChart2, CheckSquare, X, CalendarPlus, Save
+  ArrowLeft, ArrowRight, Phone, BarChart2, CheckSquare, X, CalendarPlus, Save, AlertCircle, ClipboardList, Activity
 } from 'lucide-react';
 
 // --- IMPORTAMOS EL NUEVO LOGO ---
@@ -17,7 +17,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V10.4 - Gestión Tareas Pro"; 
+const APP_VERSION = "V10.5 - Historial Cliente"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
 const SUPER_ADMIN_EMAIL = "jesusblanco@mmesl.com";
@@ -29,61 +29,116 @@ const selectClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text
 
 // --- COMPONENTES AUXILIARES ---
 
-// 0. NUEVO: MODAL DE GESTIÓN DE TAREA
+// 0. NUEVO: MODAL DE GESTIÓN DE TAREA (2 PASOS)
 const TaskActionModal = ({ isOpen, onClose, onAction, taskTitle }: any) => {
+    const [step, setStep] = useState(1);
     const [report, setReport] = useState('');
+    const [newActionType, setNewActionType] = useState('Llamada de Seguimiento');
+    const [newDate, setNewDate] = useState('');
+    const [newTime, setNewTime] = useState('09:00');
 
+    useEffect(() => { if (isOpen) { setStep(1); setReport(''); setNewDate(''); setNewTime('09:00'); } }, [isOpen]);
     if (!isOpen) return null;
+    const handleNextStep = () => { setStep(2); };
+    const isReportValid = report.trim().length > 5;
 
     return (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
                 <div className="bg-slate-50 p-4 border-b border-slate-100 flex justify-between items-center">
-                    <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                        <CheckSquare className="text-blue-600" size={18}/> Gestionar Tarea
-                    </h3>
+                    <h3 className="font-bold text-slate-800 flex items-center gap-2">{step === 1 ? <CheckSquare className="text-blue-600" size={18}/> : <CalendarPlus className="text-blue-600" size={18}/>} {step === 1 ? 'Reportar Actividad' : 'Agendar Siguiente'}</h3>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
                 </div>
-                
-                <div className="p-5 space-y-4">
+                {step === 1 && (
+                    <div className="p-5 space-y-4 animate-in slide-in-from-left-4 duration-300">
+                        <div><p className="text-xs font-bold text-slate-500 uppercase mb-1">Tarea Finalizada</p><p className="text-sm font-medium text-slate-800 bg-blue-50 p-2 rounded border border-blue-100 text-blue-900">{taskTitle}</p></div>
+                        <div><label className={labelClass}>Resultado / Reporte (Obligatorio *)</label><textarea className={`w-full p-3 border rounded-lg text-sm h-28 focus:ring-2 outline-none resize-none transition-all ${!isReportValid ? 'border-red-300 focus:ring-red-200' : 'border-slate-300 focus:ring-blue-500'}`} placeholder="Describe qué ha ocurrido (mínimo 5 letras)..." value={report} onChange={(e) => setReport(e.target.value)} autoFocus />{!isReportValid && <p className="text-[10px] text-red-500 mt-1 flex items-center gap-1"><AlertCircle size={10}/> Debes escribir un reporte.</p>}</div>
+                        <div className="flex flex-col gap-2 pt-2"><button onClick={handleNextStep} disabled={!isReportValid} className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-colors shadow-md"><CalendarPlus size={16}/> Guardar y Agendar Siguiente</button><div className="grid grid-cols-2 gap-2 mt-1"><button onClick={() => onAction('complete', report, null)} disabled={!isReportValid} className="py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed border border-emerald-200 rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-colors"><CheckCircle2 size={14}/> Finalizar (Cerrar)</button><button onClick={() => onAction('delete', report, null)} disabled={!isReportValid} className="py-2.5 bg-white hover:bg-red-50 text-slate-500 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed border border-slate-200 hover:border-red-200 rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-colors"><Trash2 size={14}/> Cancelar Tarea</button></div></div>
+                    </div>
+                )}
+                {step === 2 && (
+                    <div className="p-5 space-y-4 animate-in slide-in-from-right-4 duration-300">
+                        <div className="bg-slate-50 p-3 rounded text-xs text-slate-600 mb-2 italic border-l-2 border-slate-300">"Reporte guardado. Ahora define el próximo paso."</div>
+                        <div><label className={labelClass}>Próxima Acción</label><select className={selectClass} value={newActionType} onChange={e => setNewActionType(e.target.value)}><option>Llamada de Seguimiento</option><option>Visita Técnica</option><option>Visita de Cierre</option><option>Enviar Presupuesto</option><option>Demo Producto</option></select></div>
+                        <div className="grid grid-cols-2 gap-3"><div><label className={labelClass}>Fecha</label><input type="date" className={inputClass} value={newDate} onChange={e => setNewDate(e.target.value)} required /></div><div><label className={labelClass}>Hora</label><input type="time" className={inputClass} value={newTime} onChange={e => setNewTime(e.target.value)} required /></div></div>
+                        <div className="flex gap-2 pt-4 border-t border-slate-100 mt-2"><button onClick={() => setStep(1)} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg font-bold text-sm">Atrás</button><button onClick={() => { if(!newDate) return alert("Selecciona una fecha"); onAction('complete_new', report, { action: newActionType, date: newDate, time: newTime }); }} className="flex-[2] py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2 shadow-lg"><Save size={16}/> Confirmar Agenda</button></div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// 0.1. NUEVO: MODAL DE HISTORIAL Y RESUMEN
+const ClientHistoryModal = ({ isOpen, onClose, client }: any) => {
+    if (!isOpen || !client) return null;
+
+    const materialsCount = client.contact_materials?.length || 0;
+    const machinesCount = client.contact_machinery?.length || 0;
+
+    return (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-slate-200 flex flex-col">
+                {/* Header */}
+                <div className="bg-slate-50 p-4 border-b border-slate-100 flex justify-between items-center shrink-0">
                     <div>
-                        <p className="text-xs font-bold text-slate-500 uppercase mb-1">Tarea Actual</p>
-                        <p className="text-sm font-medium text-slate-800 bg-slate-50 p-2 rounded border border-slate-200">{taskTitle}</p>
+                        <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                            <Activity className="text-blue-600"/> Historial del Cliente
+                        </h3>
+                        <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">{client.fiscal_name}</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-500"><X size={20}/></button>
+                </div>
+
+                <div className="p-6 overflow-y-auto space-y-6">
+                    
+                    {/* BLOQUE 1: PENDIENTE */}
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                        <h4 className="text-xs font-bold text-amber-800 uppercase mb-2 flex items-center gap-2"><Clock size={14}/> Próxima Acción</h4>
+                        {client.next_action_date ? (
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <p className="font-bold text-slate-800">{client.next_action}</p>
+                                    <p className="text-xs text-slate-600">{client.next_action_date} a las {client.next_action_time}</p>
+                                </div>
+                                <span className="bg-white text-amber-700 text-xs font-bold px-3 py-1 rounded-full border border-amber-200 shadow-sm">Pendiente</span>
+                            </div>
+                        ) : (
+                            <p className="text-sm text-slate-500 italic">No hay acciones agendadas.</p>
+                        )}
                     </div>
 
-                    <div>
-                        <label className={labelClass}>Resultado / Reporte (Opcional)</label>
-                        <textarea 
-                            className="w-full p-3 border border-slate-300 rounded-lg text-sm h-24 focus:ring-2 focus:ring-blue-500 outline-none resize-none"
-                            placeholder="Escribe aquí qué ha pasado en la llamada o visita..."
-                            value={report}
-                            onChange={(e) => setReport(e.target.value)}
-                        />
-                    </div>
-
-                    <div className="flex flex-col gap-2 pt-2">
-                        <button 
-                            onClick={() => onAction('complete_new', report)}
-                            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-colors"
-                        >
-                            <CalendarPlus size={16}/> Finalizar y Agendar Nueva
-                        </button>
-                        
-                        <div className="grid grid-cols-2 gap-2">
-                            <button 
-                                onClick={() => onAction('complete', report)}
-                                className="py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-colors"
-                            >
-                                <CheckCircle2 size={16}/> Solo Finalizar
-                            </button>
-                            <button 
-                                onClick={() => onAction('delete', '')}
-                                className="py-3 bg-white hover:bg-red-50 text-slate-600 hover:text-red-600 border border-slate-200 hover:border-red-200 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-colors"
-                            >
-                                <Trash2 size={16}/> Borrar Tarea
-                            </button>
+                    {/* BLOQUE 2: RESUMEN FLASH */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                            <p className="text-[10px] uppercase font-bold text-slate-400">Sector</p>
+                            <p className="text-sm font-bold text-slate-700 truncate" title={client.sector}>{client.sector || '-'}</p>
+                        </div>
+                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                            <p className="text-[10px] uppercase font-bold text-slate-400">Volumen</p>
+                            <p className="text-sm font-bold text-slate-700 truncate" title={client.volume}>{client.volume || '-'}</p>
+                        </div>
+                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                            <p className="text-[10px] uppercase font-bold text-slate-400">Máquinas</p>
+                            <p className="text-sm font-bold text-slate-700">{machinesCount} Reg.</p>
+                        </div>
+                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                            <p className="text-[10px] uppercase font-bold text-slate-400">Materiales</p>
+                            <p className="text-sm font-bold text-slate-700">{materialsCount} Reg.</p>
                         </div>
                     </div>
+
+                    {/* BLOQUE 3: HISTORIAL (LOG) */}
+                    <div>
+                        <h4 className="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center gap-2"><ClipboardList size={14}/> Historial de Actividad</h4>
+                        <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 h-64 overflow-y-auto text-sm text-slate-700 font-mono whitespace-pre-wrap leading-relaxed shadow-inner">
+                            {client.solution_summary ? client.solution_summary : <span className="text-slate-400 italic">No hay historial registrado aún.</span>}
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+                    <Button onClick={onClose} variant="secondary">Cerrar Vista</Button>
                 </div>
             </div>
         </div>
@@ -98,60 +153,11 @@ const AdminView = () => {
     const [newName, setNewName] = useState(''); 
     const [newRole, setNewRole] = useState('sales');
 
-    useEffect(() => {
-        fetchUsers();
-    }, []);
-
-    const fetchUsers = async () => {
-        const { data } = await supabase.from('profiles').select('*').order('email');
-        setUsers(data || []);
-    };
-
-    const createUser = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const { data, error } = await supabase.auth.signUp({ 
-            email: newEmail, 
-            password: newPass, 
-            options: { data: { role: newRole, full_name: newName } } 
-        });
-
-        if (error) {
-            alert('Error: ' + error.message);
-        } else if (data.user) {
-            await supabase.from('profiles').insert([{ 
-                id: data.user.id, 
-                email: newEmail, 
-                role: newRole,
-                full_name: newName 
-            }]);
-            
-            alert('Usuario creado correctamente.');
-            setNewEmail(''); setNewPass(''); setNewName('');
-            fetchUsers();
-        }
-    };
-
-    const updateUserField = async (id: string, field: string, value: string, currentValue: string) => {
-        if (value === currentValue) return;
-        const { error } = await supabase.from('profiles').update({ [field]: value }).eq('id', id);
-        if (!error) {
-             setUsers(users.map(u => u.id === id ? { ...u, [field]: value } : u));
-        } else {
-            alert('Error al actualizar: ' + error.message);
-            fetchUsers(); 
-        }
-    };
-
-    const deleteUser = async (id: string, email: string) => {
-        if (email === SUPER_ADMIN_EMAIL) {
-            alert("Acción no permitida: No puedes borrar al Super Admin.");
-            return;
-        }
-        if (!window.confirm(`¿Estás SEGURO de eliminar a ${email}?`)) return;
-        const { error } = await supabase.from('profiles').delete().eq('id', id);
-        if (error) alert('Error: ' + error.message);
-        else setUsers(users.filter(u => u.id !== id));
-    };
+    useEffect(() => { fetchUsers(); }, []);
+    const fetchUsers = async () => { const { data } = await supabase.from('profiles').select('*').order('email'); setUsers(data || []); };
+    const createUser = async (e: React.FormEvent) => { e.preventDefault(); const { data, error } = await supabase.auth.signUp({ email: newEmail, password: newPass, options: { data: { role: newRole, full_name: newName } } }); if (error) { alert('Error: ' + error.message); } else if (data.user) { await supabase.from('profiles').insert([{ id: data.user.id, email: newEmail, role: newRole, full_name: newName }]); alert('Usuario creado.'); setNewEmail(''); setNewPass(''); setNewName(''); fetchUsers(); } };
+    const updateUserField = async (id: string, field: string, value: string, currentValue: string) => { if (value === currentValue) return; const { error } = await supabase.from('profiles').update({ [field]: value }).eq('id', id); if (!error) { setUsers(users.map(u => u.id === id ? { ...u, [field]: value } : u)); } else { alert('Error: ' + error.message); fetchUsers(); } };
+    const deleteUser = async (id: string, email: string) => { if (email === SUPER_ADMIN_EMAIL) { alert("No puedes borrar al Super Admin."); return; } if (!window.confirm(`¿Eliminar a ${email}?`)) return; const { error } = await supabase.from('profiles').delete().eq('id', id); if (error) alert('Error: ' + error.message); else setUsers(users.filter(u => u.id !== id)); };
 
     return (
         <div className="space-y-6 animate-in fade-in pb-24">
@@ -166,21 +172,8 @@ const AdminView = () => {
                 </form>
                 <div className="overflow-x-auto rounded-lg border border-slate-200 shadow-sm">
                     <table className="w-full text-sm text-left bg-white min-w-[600px]">
-                        <thead className="bg-slate-100 text-slate-500 uppercase font-bold text-xs">
-                            <tr><th className="p-4">Email</th><th className="p-4">Nombre</th><th className="p-4">Rol</th><th className="p-4 text-right">Acciones</th></tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {users.map(u => {
-                                const isSuperAdmin = u.email === SUPER_ADMIN_EMAIL;
-                                return (
-                                <tr key={u.id} className="hover:bg-blue-50/30 transition-colors group">
-                                    <td className="p-4 font-medium text-slate-700 flex items-center gap-2">{u.email}{isSuperAdmin && <span title="Super Admin"><Lock size={12} className="text-amber-500"/></span>}</td>
-                                    <td className="p-3"><div className="relative"><input className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white rounded px-2 py-1.5 outline-none text-slate-800" defaultValue={u.full_name || ''} onBlur={(e) => updateUserField(u.id, 'full_name', e.target.value, u.full_name)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} /><Edit size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 opacity-0 group-hover:opacity-100 pointer-events-none" /></div></td>
-                                    <td className="p-3"><select className={`p-1.5 border rounded w-full text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 ${u.role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-200' : u.role === 'manager' ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-white text-slate-700 border-slate-200'} ${isSuperAdmin ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`} value={u.role} disabled={isSuperAdmin} onChange={(e) => updateUserField(u.id, 'role', e.target.value, u.role)}><option value="sales">Comercial</option><option value="manager">Jefe Ventas</option><option value="admin">Administrador</option></select></td>
-                                    <td className="p-3 text-right">{!isSuperAdmin && (<button onClick={() => deleteUser(u.id, u.email)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={16} /></button>)}</td>
-                                </tr>
-                            )})} 
-                        </tbody>
+                        <thead className="bg-slate-100 text-slate-500 uppercase font-bold text-xs"><tr><th className="p-4">Email</th><th className="p-4">Nombre</th><th className="p-4">Rol</th><th className="p-4 text-right">Acciones</th></tr></thead>
+                        <tbody className="divide-y divide-slate-100">{users.map(u => { const isSuperAdmin = u.email === SUPER_ADMIN_EMAIL; return ( <tr key={u.id} className="hover:bg-blue-50/30 transition-colors group"><td className="p-4 font-medium text-slate-700 flex items-center gap-2">{u.email}{isSuperAdmin && <span title="Super Admin"><Lock size={12} className="text-amber-500"/></span>}</td><td className="p-3"><div className="relative"><input className="w-full bg-transparent border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white rounded px-2 py-1.5 outline-none text-slate-800" defaultValue={u.full_name || ''} onBlur={(e) => updateUserField(u.id, 'full_name', e.target.value, u.full_name)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} /><Edit size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 opacity-0 group-hover:opacity-100 pointer-events-none" /></div></td><td className="p-3"><select className={`p-1.5 border rounded w-full text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 ${u.role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-200' : u.role === 'manager' ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-white text-slate-700 border-slate-200'} ${isSuperAdmin ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`} value={u.role} disabled={isSuperAdmin} onChange={(e) => updateUserField(u.id, 'role', e.target.value, u.role)}><option value="sales">Comercial</option><option value="manager">Jefe Ventas</option><option value="admin">Administrador</option></select></td><td className="p-3 text-right">{!isSuperAdmin && (<button onClick={() => deleteUser(u.id, u.email)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={16} /></button>)}</td></tr> )})}</tbody>
                     </table>
                 </div>
              </Card>
@@ -191,321 +184,97 @@ const AdminView = () => {
 // 2. VISTA DASHBOARD
 const DashboardView = ({ contacts, userRole, session, setEditingContact, setView, userProfile }: any) => {
     const [filterUserId, setFilterUserId] = useState<string>('all');
-
-    const uniqueSalesUsers = Array.from(new Set(contacts.map((c: any) => c.user_id)))
-        .map(id => {
-            const contact = contacts.find((c: any) => c.user_id === id);
-            const name = contact?.profiles?.full_name || contact?.profiles?.email || 'Desconocido';
-            return { id, label: name };
-        })
-        .filter(u => u.label !== 'Desconocido');
-
-    let relevantContacts = contacts;
-    if (userRole === 'sales') {
-        relevantContacts = contacts.filter((c: any) => c.user_id === session.user.id);
-    } else {
-        if (filterUserId !== 'all') {
-            relevantContacts = contacts.filter((c: any) => c.user_id === filterUserId);
-        }
-    }
-
-    const total = relevantContacts.length;
-    const clients = relevantContacts.filter((c: any) => c.sap_status === 'Cliente SAP').length;
-    const leads = relevantContacts.filter((c: any) => ['Lead SAP', 'Nuevo Prospecto'].includes(c.sap_status)).length;
-    const today = new Date().toISOString().split('T')[0];
-    const pending = relevantContacts.filter((c: any) => c.next_action_date && c.next_action_date <= today).length;
-
-    // KPIs de Calidad
-    const withMaterials = relevantContacts.filter((c: any) => c.contact_materials && c.contact_materials.length > 0).length;
-    const withMachines = relevantContacts.filter((c: any) => c.contact_machinery && c.contact_machinery.length > 0).length;
-    const materialsPct = total > 0 ? Math.round((withMaterials / total) * 100) : 0;
-    const machinesPct = total > 0 ? Math.round((withMachines / total) * 100) : 0;
-
+    const uniqueSalesUsers = Array.from(new Set(contacts.map((c: any) => c.user_id))).map(id => { const contact = contacts.find((c: any) => c.user_id === id); const name = contact?.profiles?.full_name || contact?.profiles?.email || 'Desconocido'; return { id, label: name }; }).filter(u => u.label !== 'Desconocido');
+    let relevantContacts = contacts; if (userRole === 'sales') { relevantContacts = contacts.filter((c: any) => c.user_id === session.user.id); } else { if (filterUserId !== 'all') { relevantContacts = contacts.filter((c: any) => c.user_id === filterUserId); } }
+    const total = relevantContacts.length; const clients = relevantContacts.filter((c: any) => c.sap_status === 'Cliente SAP').length; const leads = relevantContacts.filter((c: any) => ['Lead SAP', 'Nuevo Prospecto'].includes(c.sap_status)).length; const today = new Date().toISOString().split('T')[0]; const pending = relevantContacts.filter((c: any) => c.next_action_date && c.next_action_date <= today).length;
+    const withMaterials = relevantContacts.filter((c: any) => c.contact_materials && c.contact_materials.length > 0).length; const withMachines = relevantContacts.filter((c: any) => c.contact_machinery && c.contact_machinery.length > 0).length; const materialsPct = total > 0 ? Math.round((withMaterials / total) * 100) : 0; const machinesPct = total > 0 ? Math.round((withMachines / total) * 100) : 0;
     const displayName = userProfile?.full_name || userProfile?.email?.split('@')[0] || 'Usuario';
 
     return (
       <div className="space-y-6 animate-in fade-in duration-500 w-full overflow-hidden pb-24">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center px-1 gap-4">
-             <div>
-                <h2 className="text-lg md:text-2xl font-bold text-slate-800 flex items-center gap-2">
-                    Hola, <span className="text-blue-600">{displayName}</span>
-                </h2>
-                <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded uppercase">{userRole === 'sales' ? 'Comercial' : userRole === 'manager' ? 'Jefe Ventas' : 'Administrador'}</span>
-                    <span className="text-[10px] text-slate-400">{APP_VERSION}</span>
-                </div>
-             </div>
-
-             {(userRole !== 'sales') && (
-                 <div className="flex items-center gap-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm w-full md:w-auto">
-                    <Filter size={14} className="text-slate-400 ml-1 shrink-0" />
-                    <select 
-                        className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer w-full md:min-w-[150px]"
-                        value={filterUserId}
-                        onChange={(e) => setFilterUserId(e.target.value)}
-                    >
-                        <option value="all">Ver: Todos</option>
-                        <option disabled>──────────</option>
-                        {uniqueSalesUsers.map((u: any) => (
-                            <option key={u.id} value={u.id}>{u.label}</option>
-                        ))}
-                    </select>
-                 </div>
-             )}
+             <div><h2 className="text-lg md:text-2xl font-bold text-slate-800 flex items-center gap-2">Hola, <span className="text-blue-600">{displayName}</span></h2><div className="flex items-center gap-2 mt-1"><span className="text-xs font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded uppercase">{userRole === 'sales' ? 'Comercial' : userRole === 'manager' ? 'Jefe Ventas' : 'Administrador'}</span><span className="text-[10px] text-slate-400">{APP_VERSION}</span></div></div>
+             {(userRole !== 'sales') && (<div className="flex items-center gap-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm w-full md:w-auto"><Filter size={14} className="text-slate-400 ml-1 shrink-0" /><select className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer w-full md:min-w-[150px]" value={filterUserId} onChange={(e) => setFilterUserId(e.target.value)}><option value="all">Ver: Todos</option><option disabled>──────────</option>{uniqueSalesUsers.map((u: any) => (<option key={u.id} value={u.id}>{u.label}</option>))}</select></div>)}
         </div>
-        
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full">
           <Card className="p-3 md:p-4 border-l-4 border-l-blue-600 flex justify-between items-center"><div><p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase">Total</p><h3 className="text-xl md:text-2xl font-bold text-slate-900">{total}</h3></div><div className="bg-blue-50 p-2 rounded-lg text-blue-600"><Users size={18}/></div></Card>
           <Card className="p-3 md:p-4 border-l-4 border-l-emerald-500 flex justify-between items-center"><div><p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase">Clientes</p><h3 className="text-xl md:text-2xl font-bold text-slate-900">{clients}</h3></div><div className="bg-emerald-50 p-2 rounded-lg text-emerald-600"><CheckCircle2 size={18}/></div></Card>
           <Card className="p-3 md:p-4 border-l-4 border-l-indigo-500 flex justify-between items-center"><div><p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase">Prospectos</p><h3 className="text-xl md:text-2xl font-bold text-slate-900">{leads}</h3></div><div className="bg-indigo-50 p-2 rounded-lg text-indigo-600"><Target size={18}/></div></Card>
           <Card className={`p-3 md:p-4 border-l-4 flex justify-between items-center ${pending > 0 ? 'border-l-red-500 bg-red-50/30' : 'border-l-slate-300'}`}><div><p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase">Pendiente Hoy</p><h3 className={`text-xl md:text-2xl font-bold ${pending > 0 ? 'text-red-600' : 'text-slate-900'}`}>{pending}</h3></div><div className="bg-white p-2 rounded-lg text-slate-400 border border-slate-100"><Clock size={18}/></div></Card>
         </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
-            <Card className="p-6">
-                <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-slate-800"><BarChart2 className="text-purple-600"/> Calidad de Fichas</h3>
-                <div className="space-y-6">
-                    <div>
-                        <div className="flex justify-between text-sm mb-1">
-                            <span className="text-slate-600 flex items-center gap-2"><FileText size={14}/> Datos Materiales Completos</span>
-                            <span className="font-bold text-slate-800">{materialsPct}%</span>
-                        </div>
-                        <div className="w-full bg-slate-100 rounded-full h-2.5">
-                            <div className="bg-purple-600 h-2.5 rounded-full transition-all duration-1000" style={{ width: `${materialsPct}%` }}></div>
-                        </div>
-                        <p className="text-xs text-slate-400 mt-1">{withMaterials} de {total} contactos tienen materiales registrados.</p>
-                    </div>
-                    <div>
-                        <div className="flex justify-between text-sm mb-1">
-                            <span className="text-slate-600 flex items-center gap-2"><Target size={14}/> Parque Maquinaria Completo</span>
-                            <span className="font-bold text-slate-800">{machinesPct}%</span>
-                        </div>
-                        <div className="w-full bg-slate-100 rounded-full h-2.5">
-                            <div className="bg-orange-500 h-2.5 rounded-full transition-all duration-1000" style={{ width: `${machinesPct}%` }}></div>
-                        </div>
-                        <p className="text-xs text-slate-400 mt-1">{withMachines} de {total} contactos tienen maquinaria registrada.</p>
-                    </div>
-                </div>
-            </Card>
-
-            <Card className="p-6 flex flex-col justify-center items-center text-center bg-gradient-to-br from-white to-slate-50">
-                <div className="p-4 mb-4"><img src={logoM} alt="Logo" className="w-20 h-20 object-contain opacity-90" /></div>
-                <h3 className="font-bold text-lg text-slate-800 mb-2">Acceso Rápido</h3>
-                <div className="flex flex-col gap-3 w-full max-w-xs">
-                    <Button onClick={() => { setEditingContact(null); setView('form'); }} icon={UserPlus} className="shadow-lg justify-center w-full">Nuevo Briefing</Button>
-                    <Button onClick={() => setView('agenda')} icon={Calendar} variant="secondary" className="justify-center w-full border border-slate-200">Ver Agenda Completa</Button>
-                </div>
-            </Card>
+            <Card className="p-6"><h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-slate-800"><BarChart2 className="text-purple-600"/> Calidad de Fichas</h3><div className="space-y-6"><div><div className="flex justify-between text-sm mb-1"><span className="text-slate-600 flex items-center gap-2"><FileText size={14}/> Datos Materiales Completos</span><span className="font-bold text-slate-800">{materialsPct}%</span></div><div className="w-full bg-slate-100 rounded-full h-2.5"><div className="bg-purple-600 h-2.5 rounded-full transition-all duration-1000" style={{ width: `${materialsPct}%` }}></div></div><p className="text-xs text-slate-400 mt-1">{withMaterials} de {total} contactos tienen materiales registrados.</p></div><div><div className="flex justify-between text-sm mb-1"><span className="text-slate-600 flex items-center gap-2"><Target size={14}/> Parque Maquinaria Completo</span><span className="font-bold text-slate-800">{machinesPct}%</span></div><div className="w-full bg-slate-100 rounded-full h-2.5"><div className="bg-orange-500 h-2.5 rounded-full transition-all duration-1000" style={{ width: `${machinesPct}%` }}></div></div><p className="text-xs text-slate-400 mt-1">{withMachines} de {total} contactos tienen maquinaria registrada.</p></div></div></Card>
+            <Card className="p-6 flex flex-col justify-center items-center text-center bg-gradient-to-br from-white to-slate-50"><div className="p-4 mb-4"><img src={logoM} alt="Logo" className="w-20 h-20 object-contain opacity-90" /></div><h3 className="font-bold text-lg text-slate-800 mb-2">Acceso Rápido</h3><div className="flex flex-col gap-3 w-full max-w-xs"><Button onClick={() => { setEditingContact(null); setView('form'); }} icon={UserPlus} className="shadow-lg justify-center w-full">Nuevo Briefing</Button><Button onClick={() => setView('agenda')} icon={Calendar} variant="secondary" className="justify-center w-full border border-slate-200">Ver Agenda Completa</Button></div></Card>
         </div>
       </div>
     );
 };
 
-// 4. VISTA AGENDA SEMANAL (ACTUALIZADA)
+// 4. VISTA AGENDA SEMANAL
 const AgendaView = ({ contacts, setEditingContact, setView, onActionComplete }: any) => {
     const [weekOffset, setWeekOffset] = useState(0);
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedTask, setSelectedTask] = useState<any>(null);
 
-    // Manejador de acciones del modal
-    const handleModalAction = async (type: 'delete' | 'complete' | 'complete_new', report: string) => {
+    const handleModalAction = async (type: 'delete' | 'complete' | 'complete_new', report: string, nextActionData: any) => {
         if (!selectedTask) return;
-
         try {
             let updates: any = {};
             const today = new Date().toISOString().split('T')[0];
             const timeNow = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-
-            // Construir el reporte que se guardará en "Resumen" (solution_summary)
-            const logEntry = `\n[${today} ${timeNow}] ✅ COMPLETADO: ${selectedTask.next_action}\n> Reporte: ${report || 'Sin comentarios'}\n-------------------`;
-
-            if (type === 'delete') {
-                updates = { next_action_date: null, next_action_time: null, next_action: '' }; // Limpiar todo
-            } else {
-                // Completar (guardar log y limpiar fecha)
-                const currentSummary = selectedTask.solution_summary || '';
-                updates = { 
-                    next_action_date: null, 
-                    next_action_time: null,
-                    solution_summary: currentSummary + logEntry
-                };
-            }
-
-            // Actualizar Supabase
+            let actionLabel = "✅ COMPLETADO"; if (type === 'delete') actionLabel = "❌ CANCELADO";
+            const logEntry = `\n[${today} ${timeNow}] ${actionLabel}: ${selectedTask.next_action}\n> Reporte: ${report}\n-------------------`;
+            const currentSummary = selectedTask.solution_summary || '';
+            if (type === 'delete' || type === 'complete') { updates = { next_action_date: null, next_action_time: null, next_action: type === 'delete' ? 'Tarea Cancelada' : 'Acción Completada (Definir siguiente)', solution_summary: currentSummary + logEntry }; } 
+            else if (type === 'complete_new') { updates = { next_action: nextActionData.action, next_action_date: nextActionData.date, next_action_time: nextActionData.time, solution_summary: currentSummary + logEntry }; }
             const { error } = await supabase.from('industrial_contacts').update(updates).eq('id', selectedTask.id);
             if (error) throw error;
-
-            // Refrescar datos
-            await onActionComplete();
-            setModalOpen(false);
-
-            // Si es "Agendar Nueva", redirigir al formulario
-            if (type === 'complete_new') {
-                // Pequeño hack: actualizamos el objeto localmente para que al abrir el form ya tenga el resumen actualizado
-                const updatedTask = { ...selectedTask, ...updates };
-                setEditingContact(updatedTask);
-                setView('form');
-            }
-
-        } catch (error: any) {
-            alert("Error: " + error.message);
-        }
+            await onActionComplete(); setModalOpen(false);
+        } catch (error: any) { alert("Error: " + error.message); }
     };
 
-    // Obtener días de la semana
-    const getWeekDays = (offset: number) => {
-        const curr = new Date();
-        const day = curr.getDay();
-        const diff = curr.getDate() - day + (day === 0 ? -6 : 1); 
-        const monday = new Date(curr.setDate(diff));
-        monday.setDate(monday.getDate() + (offset * 7));
-
-        const week = [];
-        for (let i = 0; i < 5; i++) {
-            const d = new Date(monday);
-            d.setDate(monday.getDate() + i);
-            week.push(d.toISOString().split('T')[0]);
-        }
-        return week;
-    };
-
-    const weekDays = getWeekDays(weekOffset);
-    const today = new Date().toISOString().split('T')[0];
-    const dayNames = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
-    const tasks = contacts.filter((c: any) => c.next_action_date);
+    const getWeekDays = (offset: number) => { const curr = new Date(); const day = curr.getDay(); const diff = curr.getDate() - day + (day === 0 ? -6 : 1); const monday = new Date(curr.setDate(diff)); monday.setDate(monday.getDate() + (offset * 7)); const week = []; for (let i = 0; i < 5; i++) { const d = new Date(monday); d.setDate(monday.getDate() + i); week.push(d.toISOString().split('T')[0]); } return week; };
+    const weekDays = getWeekDays(weekOffset); const today = new Date().toISOString().split('T')[0]; const dayNames = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]; const tasks = contacts.filter((c: any) => c.next_action_date);
 
     return (
         <div className="space-y-4 animate-in fade-in pb-24 h-full flex flex-col">
-            
-            {/* Modal de Acción */}
-            <TaskActionModal 
-                isOpen={modalOpen} 
-                onClose={() => setModalOpen(false)} 
-                taskTitle={selectedTask?.next_action || 'Tarea'} 
-                onAction={handleModalAction}
-            />
-
-            <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm shrink-0 gap-4">
-                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                    <Calendar className="text-blue-600"/> Agenda Semanal
-                </h2>
-                <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200">
-                    <button onClick={() => setWeekOffset(weekOffset - 1)} className="p-2 hover:bg-white rounded-md shadow-sm transition-all text-slate-600"><ArrowLeft size={18}/></button>
-                    <span className="text-sm font-bold w-32 text-center text-slate-700">
-                        {weekOffset === 0 ? "Esta Semana" : weekOffset === 1 ? "Próxima" : weekOffset === -1 ? "Pasada" : `Semana ${weekOffset > 0 ? '+' : ''}${weekOffset}`}
-                    </span>
-                    <button onClick={() => setWeekOffset(weekOffset + 1)} className="p-2 hover:bg-white rounded-md shadow-sm transition-all text-slate-600"><ArrowRight size={18}/></button>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 h-full overflow-y-auto">
-                {weekDays.map((dateStr, index) => {
-                    const dayTasks = tasks.filter((c: any) => c.next_action_date === dateStr)
-                                          .sort((a: any, b: any) => (a.next_action_time || '00:00').localeCompare(b.next_action_time || '00:00'));
-                    const isToday = dateStr === today;
-
-                    return (
-                        <div key={dateStr} className={`flex flex-col h-full min-h-[200px] rounded-xl border ${isToday ? 'border-blue-400 ring-1 ring-blue-200 bg-blue-50/20' : 'border-slate-200 bg-slate-50/30'}`}>
-                            <div className={`p-3 text-center border-b ${isToday ? 'bg-blue-100/50 border-blue-200' : 'bg-slate-100/50 border-slate-200'} rounded-t-xl`}>
-                                <p className={`text-xs font-bold uppercase ${isToday ? 'text-blue-700' : 'text-slate-500'}`}>{dayNames[index]}</p>
-                                <p className={`text-sm font-bold ${isToday ? 'text-blue-900' : 'text-slate-700'}`}>{dateStr.split('-')[2]}/{dateStr.split('-')[1]}</p>
-                            </div>
-                            <div className="p-2 space-y-2 flex-1">
-                                {dayTasks.map((task: any) => {
-                                    let borderColor = "border-l-blue-500";
-                                    let icon = <Phone size={12} />;
-                                    const action = task.next_action?.toLowerCase() || '';
-                                    if (action.includes("visita")) { borderColor = "border-l-emerald-500"; icon = <Users size={12}/>; }
-                                    if (action.includes("oferta") || action.includes("presupuesto")) { borderColor = "border-l-orange-500"; icon = <FileText size={12}/>; }
-
-                                    return (
-                                        <div key={task.id} onClick={() => { setEditingContact(task); setView('form'); }} className={`bg-white p-3 rounded-lg border border-slate-100 border-l-4 ${borderColor} shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-95 group relative`}>
-                                            <div className="flex justify-between items-start mb-1">
-                                                <span className="text-[10px] font-bold bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 flex items-center gap-1">{icon} {task.next_action_time?.slice(0,5)}</span>
-                                                {/* BOTÓN COMPLETAR QUE ABRE MODAL */}
-                                                <button 
-                                                    onClick={(e) => { e.stopPropagation(); setSelectedTask(task); setModalOpen(true); }}
-                                                    className="text-slate-300 hover:text-emerald-600 p-1 rounded hover:bg-emerald-50 transition-colors"
-                                                    title="Gestionar Tarea"
-                                                >
-                                                    <CheckSquare size={16} />
-                                                </button>
-                                            </div>
-                                            <p className="text-xs font-bold text-slate-800 line-clamp-1">{task.fiscal_name}</p>
-                                            <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1 capitalize">{task.next_action}</p>
-                                        </div>
-                                    );
-                                })}
-                                {dayTasks.length === 0 && <div className="h-20 flex items-center justify-center opacity-30"><p className="text-xs text-slate-400 italic">--</p></div>}
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
+            <TaskActionModal isOpen={modalOpen} onClose={() => setModalOpen(false)} taskTitle={selectedTask?.next_action || 'Tarea'} onAction={handleModalAction} />
+            <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm shrink-0 gap-4"><h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Calendar className="text-blue-600"/> Agenda Semanal</h2><div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200"><button onClick={() => setWeekOffset(weekOffset - 1)} className="p-2 hover:bg-white rounded-md shadow-sm transition-all text-slate-600"><ArrowLeft size={18}/></button><span className="text-sm font-bold w-32 text-center text-slate-700">{weekOffset === 0 ? "Esta Semana" : weekOffset === 1 ? "Próxima" : weekOffset === -1 ? "Pasada" : `Semana ${weekOffset > 0 ? '+' : ''}${weekOffset}`}</span><button onClick={() => setWeekOffset(weekOffset + 1)} className="p-2 hover:bg-white rounded-md shadow-sm transition-all text-slate-600"><ArrowRight size={18}/></button></div></div>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 h-full overflow-y-auto">{weekDays.map((dateStr, index) => { const dayTasks = tasks.filter((c: any) => c.next_action_date === dateStr).sort((a: any, b: any) => (a.next_action_time || '00:00').localeCompare(b.next_action_time || '00:00')); const isToday = dateStr === today; return ( <div key={dateStr} className={`flex flex-col h-full min-h-[200px] rounded-xl border ${isToday ? 'border-blue-400 ring-1 ring-blue-200 bg-blue-50/20' : 'border-slate-200 bg-slate-50/30'}`}><div className={`p-3 text-center border-b ${isToday ? 'bg-blue-100/50 border-blue-200' : 'bg-slate-100/50 border-slate-200'} rounded-t-xl`}><p className={`text-xs font-bold uppercase ${isToday ? 'text-blue-700' : 'text-slate-500'}`}>{dayNames[index]}</p><p className={`text-sm font-bold ${isToday ? 'text-blue-900' : 'text-slate-700'}`}>{dateStr.split('-')[2]}/{dateStr.split('-')[1]}</p></div><div className="p-2 space-y-2 flex-1">{dayTasks.map((task: any) => { let borderColor = "border-l-blue-500"; let icon = <Phone size={12} />; const action = task.next_action?.toLowerCase() || ''; if (action.includes("visita")) { borderColor = "border-l-emerald-500"; icon = <Users size={12}/>; } if (action.includes("oferta") || action.includes("presupuesto")) { borderColor = "border-l-orange-500"; icon = <FileText size={12}/>; } return ( <div key={task.id} onClick={() => { setEditingContact(task); setView('form'); }} className={`bg-white p-3 rounded-lg border border-slate-100 border-l-4 ${borderColor} shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-95 group relative`}><div className="flex justify-between items-start mb-1"><span className="text-[10px] font-bold bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 flex items-center gap-1">{icon} {task.next_action_time?.slice(0,5)}</span><button onClick={(e) => { e.stopPropagation(); setSelectedTask(task); setModalOpen(true); }} className="text-slate-300 hover:text-emerald-600 p-1 rounded hover:bg-emerald-50 transition-colors" title="Gestionar Tarea"><CheckSquare size={16} /></button></div><p className="text-xs font-bold text-slate-800 line-clamp-1">{task.fiscal_name}</p><p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1 capitalize">{task.next_action}</p></div> ); })}{dayTasks.length === 0 && <div className="h-20 flex items-center justify-center opacity-30"><p className="text-xs text-slate-400 italic">--</p></div>}</div></div> ); })}</div>
         </div>
     );
 };
 
-// 5. VISTA LISTA
+// 5. VISTA LISTA (MODIFICADA: NUEVO BOTÓN HISTORIAL)
 const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, session, setEditingContact, setView, handleDelete }: any) => {
     const [viewFilter, setViewFilter] = useState<string>('all'); 
     
+    // NUEVO: ESTADOS PARA EL MODAL DE HISTORIAL
+    const [historyModalOpen, setHistoryModalOpen] = useState(false);
+    const [selectedClientHistory, setSelectedClientHistory] = useState<any>(null);
+
     let displayContacts = contacts;
-
-    if (userRole === 'sales') {
-        displayContacts = contacts.filter((c: any) => c.user_id === session.user.id);
-    } else {
-        if (viewFilter === 'mine') {
-            displayContacts = contacts.filter((c: any) => c.user_id === session.user.id);
-        } else if (viewFilter !== 'all') {
-            displayContacts = contacts.filter((c: any) => c.user_id === viewFilter);
-        }
-    }
-
-    const filtered = displayContacts.filter((c: any) => 
-        c.fiscal_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        c.contact_person?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    const uniqueSalesUsers = Array.from(new Set(contacts.map((c: any) => c.user_id)))
-        .map(id => {
-            const contact = contacts.find((c: any) => c.user_id === id);
-            const name = contact?.profiles?.full_name || contact?.profiles?.email || 'Desconocido';
-            return { id, label: name };
-        })
-        .filter(u => u.label !== 'Desconocido');
+    if (userRole === 'sales') { displayContacts = contacts.filter((c: any) => c.user_id === session.user.id); } 
+    else { if (viewFilter === 'mine') { displayContacts = contacts.filter((c: any) => c.user_id === session.user.id); } else if (viewFilter !== 'all') { displayContacts = contacts.filter((c: any) => c.user_id === viewFilter); } }
+    
+    const filtered = displayContacts.filter((c: any) => c.fiscal_name?.toLowerCase().includes(searchTerm.toLowerCase()) || c.contact_person?.toLowerCase().includes(searchTerm.toLowerCase()));
+    const uniqueSalesUsers = Array.from(new Set(contacts.map((c: any) => c.user_id))).map(id => { const contact = contacts.find((c: any) => c.user_id === id); const name = contact?.profiles?.full_name || contact?.profiles?.email || 'Desconocido'; return { id, label: name }; }).filter(u => u.label !== 'Desconocido');
 
     return (
       <div className="space-y-4 animate-in fade-in duration-500 pb-24 w-full overflow-hidden">
         
+        {/* MODAL DE HISTORIAL */}
+        <ClientHistoryModal 
+            isOpen={historyModalOpen} 
+            onClose={() => setHistoryModalOpen(false)} 
+            client={selectedClientHistory} 
+        />
+
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-               <div>
-                   <h2 className="text-xl font-bold text-slate-800">Base de Datos</h2>
-                   <p className="text-xs text-slate-500">
-                       {userRole === 'sales' ? 'Mis Fichas' : `Mostrando: ${viewFilter === 'all' ? 'Todos' : viewFilter === 'mine' ? 'Mis Fichas' : 'Filtro Usuario'}`}
-                   </p>
-               </div>
-
-               {(userRole === 'manager' || userRole === 'admin') && (
-                   <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200 w-full md:w-auto overflow-x-auto no-scrollbar">
-                       <button onClick={() => setViewFilter('all')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors whitespace-nowrap ${viewFilter === 'all' ? 'bg-white text-blue-600 shadow-sm border' : 'text-slate-500 hover:text-slate-700'}`}>Todos</button>
-                       <button onClick={() => setViewFilter('mine')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors whitespace-nowrap ${viewFilter === 'mine' ? 'bg-white text-blue-600 shadow-sm border' : 'text-slate-500 hover:text-slate-700'}`}>Míos</button>
-                       <div className="h-4 w-px bg-slate-300 mx-1"></div>
-                       <select 
-                            value={viewFilter !== 'all' && viewFilter !== 'mine' ? viewFilter : ''} 
-                            onChange={(e) => setViewFilter(e.target.value || 'all')}
-                            className="bg-transparent text-xs font-bold text-slate-600 outline-none min-w-[120px]"
-                       >
-                           <option value="">Filtrar por usuario...</option>
-                           {uniqueSalesUsers.map((u: any) => (
-                               <option key={u.id} value={u.id}>{u.label}</option>
-                           ))}
-                       </select>
-                   </div>
-               )}
+               <div><h2 className="text-xl font-bold text-slate-800">Base de Datos</h2><p className="text-xs text-slate-500">{userRole === 'sales' ? 'Mis Fichas' : `Mostrando: ${viewFilter === 'all' ? 'Todos' : viewFilter === 'mine' ? 'Mis Fichas' : 'Filtro Usuario'}`}</p></div>
+               {(userRole === 'manager' || userRole === 'admin') && (<div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200 w-full md:w-auto overflow-x-auto no-scrollbar"><button onClick={() => setViewFilter('all')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors whitespace-nowrap ${viewFilter === 'all' ? 'bg-white text-blue-600 shadow-sm border' : 'text-slate-500 hover:text-slate-700'}`}>Todos</button><button onClick={() => setViewFilter('mine')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors whitespace-nowrap ${viewFilter === 'mine' ? 'bg-white text-blue-600 shadow-sm border' : 'text-slate-500 hover:text-slate-700'}`}>Míos</button><div className="h-4 w-px bg-slate-300 mx-1"></div><select value={viewFilter !== 'all' && viewFilter !== 'mine' ? viewFilter : ''} onChange={(e) => setViewFilter(e.target.value || 'all')} className="bg-transparent text-xs font-bold text-slate-600 outline-none min-w-[120px]"><option value="">Filtrar por usuario...</option>{uniqueSalesUsers.map((u: any) => (<option key={u.id} value={u.id}>{u.label}</option>))}</select></div>)}
            </div>
-
            <div className="relative w-full"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} /><input type="text" placeholder="Buscar empresa o contacto..." className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
         </div>
 
@@ -533,6 +302,15 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
                     </div>
                   </div>
                   <div className="flex gap-2 shrink-0 self-end md:self-start w-full md:w-auto justify-end border-t md:border-none pt-2 md:pt-0 mt-2 md:mt-0">
+                      {/* NUEVO BOTÓN HISTORIAL */}
+                      <button 
+                        onClick={() => { setSelectedClientHistory(c); setHistoryModalOpen(true); }} 
+                        className="p-2 text-slate-400 hover:text-purple-600 bg-slate-50 hover:bg-purple-50 rounded-lg flex-1 md:flex-none flex justify-center transition-colors"
+                        title="Ver Historial"
+                      >
+                        <ClipboardList size={18}/>
+                      </button>
+                      
                       <button onClick={() => { setEditingContact(c); setView('form'); }} className="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 rounded-lg flex-1 md:flex-none flex justify-center"><Edit size={18}/></button>
                       {(userRole === 'admin' || c.user_id === session.user.id) && (<button onClick={() => handleDelete(c.id)} className="p-2 text-slate-400 hover:text-red-600 bg-slate-50 rounded-lg flex-1 md:flex-none flex justify-center"><Trash2 size={18}/></button>)}
                   </div>
