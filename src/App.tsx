@@ -3,7 +3,7 @@ import { supabase } from './lib/supabase';
 import { 
   LayoutDashboard, Users, UserPlus, Search, Trash2, Edit, 
   Briefcase, CheckCircle2, Clock, Target, FileText, 
-  LogOut, Shield, UserCog, Menu, Loader2, Calendar, User, Lock, Filter
+  LogOut, Shield, UserCog, Menu, Loader2, Calendar, User, Lock, Filter, KeyRound
 } from 'lucide-react';
 
 // --- IMPORTAMOS EL NUEVO LOGO ---
@@ -16,7 +16,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V8.6 - email"; 
+const APP_VERSION = "V8.6 - Recovery Fix"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
 const SUPER_ADMIN_EMAIL = "jesusblanco@mmesl.com";
@@ -322,9 +322,14 @@ export default function App() {
   const [editingContact, setEditingContact] = useState<any>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
 
+  // AUTH STATES
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
+  
+  // NUEVO: ESTADO PARA CONTROLAR EL MODO RECUPERACIÓN DE CONTRASEÑA
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -332,10 +337,20 @@ export default function App() {
       if (session) fetchUserProfile(session.user.id);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // AQUÍ DETECTAMOS SI VIENE DEL LINK DE RECUPERACIÓN
+      if (event === 'PASSWORD_RECOVERY') {
+        setRecoveryMode(true);
+      }
+      
       setSession(session);
       if (session) fetchUserProfile(session.user.id);
-      else { setContacts([]); setUserRole('sales'); setUserProfile(null); }
+      else { 
+          setContacts([]); 
+          setUserRole('sales'); 
+          setUserProfile(null); 
+          setRecoveryMode(false); // Reset al salir
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -364,13 +379,11 @@ export default function App() {
     setAuthLoading(false);
   }
 
-  // --- FUNCIÓN AÑADIDA: RECUPERACIÓN DE CONTRASEÑA CORRECTA ---
   async function handleResetPassword() {
     if (!email) {
         return alert("Por favor, introduce tu email en el campo de arriba para poder enviarte el correo de recuperación.");
     }
     setAuthLoading(true);
-    // AQUÍ ESTÁ LA CORRECCIÓN DE LA URL
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: 'https://crm-industrial-v7-final.vercel.app/',
     });
@@ -381,6 +394,23 @@ export default function App() {
     } else {
         alert("¡Enviado! Revisa tu bandeja de entrada (y spam) para restablecer tu contraseña.");
     }
+  }
+
+  // NUEVA FUNCIÓN: ACTUALIZAR CONTRASEÑA FINAL
+  async function handleUpdateUserPassword(e: React.FormEvent) {
+    e.preventDefault();
+    setAuthLoading(true);
+    
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    
+    if (error) {
+        alert("Error al guardar: " + error.message);
+    } else {
+        alert("Contraseña actualizada correctamente. Ya puedes usar el CRM.");
+        setRecoveryMode(false); // Quitamos el modo recuperación
+        setNewPassword('');
+    }
+    setAuthLoading(false);
   }
 
   async function handleLogout() {
@@ -396,7 +426,6 @@ export default function App() {
       const { data, error } = await supabase
         .from('industrial_contacts')
         .select('*, profiles:user_id(email, full_name, role)')
-        // AÑADIDO: Rango para traer hasta 10.000 registros
         .range(0, 9999)
         .order('created_at', { ascending: false });
         
@@ -418,7 +447,32 @@ export default function App() {
 
   const navBtnClass = (active: boolean) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${active ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`;
 
-  // --- LOGIN SCREEN ---
+  // --- 1. PANTALLA ESPECIAL: RESTABLECER CONTRASEÑA ---
+  // Esta pantalla solo sale si Supabase detecta que vienes del email de recuperación
+  if (session && recoveryMode) {
+      return (
+        <div className="h-screen w-full flex items-center justify-center bg-slate-100 p-4">
+            <Card className="max-w-md p-8 shadow-2xl w-11/12 border-t-4 border-t-blue-600">
+                <div className="flex justify-center mb-6 text-blue-600">
+                    <KeyRound size={48} />
+                </div>
+                <h1 className="text-2xl font-bold text-center text-slate-900 mb-2">Nueva Contraseña</h1>
+                <p className="text-center text-slate-500 text-sm mb-6">Introduce tu nueva contraseña para acceder.</p>
+                <form onSubmit={handleUpdateUserPassword} className="space-y-4">
+                    <div>
+                        <label className={labelClass}>Nueva Contraseña</label>
+                        <input type="password" required className={inputClass} value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} />
+                    </div>
+                    <Button type="submit" className="w-full py-3" disabled={authLoading}>
+                        {authLoading ? <Loader2 className="animate-spin"/> : 'Guardar Nueva Contraseña'}
+                    </Button>
+                </form>
+            </Card>
+        </div>
+      );
+  }
+
+  // --- 2. PANTALLA LOGIN (Si no hay sesión) ---
   if (!session) {
     return (
         <div className="h-screen w-full flex items-center justify-center bg-slate-100 p-4">
@@ -434,7 +488,6 @@ export default function App() {
                     <div><label className={labelClass}>Contraseña</label><input type="password" required className={inputClass} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" /></div>
                     <Button type="submit" className="w-full py-3" disabled={authLoading}>{authLoading ? <Loader2 className="animate-spin"/> : 'Entrar'}</Button>
                     
-                    {/* BOTÓN NUEVO PARA RECUPERAR CONTRASEÑA */}
                     <div className="text-center pt-2">
                         <button 
                             type="button" 
@@ -451,7 +504,7 @@ export default function App() {
     );
   }
 
-  // --- APP LAYOUT ---
+  // --- 3. APP PRINCIPAL (Si hay sesión y NO es recovery) ---
   return (
     <div className="flex h-screen bg-slate-100 font-sans text-slate-900 w-full fixed inset-0 max-w-[100vw] overflow-x-hidden">
        <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 flex flex-col shadow-2xl shrink-0`}>
