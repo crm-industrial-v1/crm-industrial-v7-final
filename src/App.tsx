@@ -3,7 +3,8 @@ import { supabase } from './lib/supabase';
 import { 
   LayoutDashboard, Users, UserPlus, Search, Trash2, Edit, 
   Briefcase, CheckCircle2, Clock, Target, FileText, 
-  LogOut, Shield, UserCog, Menu, Loader2, Calendar, User, Lock, Filter, KeyRound
+  LogOut, Shield, UserCog, Menu, Loader2, Calendar, User, Lock, Filter, KeyRound,
+  ArrowLeft, ArrowRight, Phone, BarChart2
 } from 'lucide-react';
 
 // --- IMPORTAMOS EL NUEVO LOGO ---
@@ -16,7 +17,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "Versión 9.3"; 
+const APP_VERSION = "V10.1 - Agenda & KPIs (Safe)"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
 const SUPER_ADMIN_EMAIL = "jesusblanco@mmesl.com";
@@ -126,7 +127,7 @@ const AdminView = () => {
     );
 };
 
-// 2. VISTA DASHBOARD
+// 2. VISTA DASHBOARD (KPIs Calidad)
 const DashboardView = ({ contacts, userRole, session, setEditingContact, setView, userProfile }: any) => {
     const [filterUserId, setFilterUserId] = useState<string>('all');
 
@@ -152,6 +153,12 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
     const leads = relevantContacts.filter((c: any) => ['Lead SAP', 'Nuevo Prospecto'].includes(c.sap_status)).length;
     const today = new Date().toISOString().split('T')[0];
     const pending = relevantContacts.filter((c: any) => c.next_action_date && c.next_action_date <= today).length;
+
+    // Nuevos KPIs de Calidad
+    const withMaterials = relevantContacts.filter((c: any) => c.contact_materials && c.contact_materials.length > 0).length;
+    const withMachines = relevantContacts.filter((c: any) => c.contact_machinery && c.contact_machinery.length > 0).length;
+    const materialsPct = total > 0 ? Math.round((withMaterials / total) * 100) : 0;
+    const machinesPct = total > 0 ? Math.round((withMachines / total) * 100) : 0;
 
     const displayName = userProfile?.full_name || userProfile?.email?.split('@')[0] || 'Usuario';
 
@@ -186,37 +193,137 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
              )}
         </div>
         
+        {/* KPIs Generales */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full">
           <Card className="p-3 md:p-4 border-l-4 border-l-blue-600 flex justify-between items-center"><div><p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase">Total</p><h3 className="text-xl md:text-2xl font-bold text-slate-900">{total}</h3></div><div className="bg-blue-50 p-2 rounded-lg text-blue-600"><Users size={18}/></div></Card>
           <Card className="p-3 md:p-4 border-l-4 border-l-emerald-500 flex justify-between items-center"><div><p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase">Clientes</p><h3 className="text-xl md:text-2xl font-bold text-slate-900">{clients}</h3></div><div className="bg-emerald-50 p-2 rounded-lg text-emerald-600"><CheckCircle2 size={18}/></div></Card>
           <Card className="p-3 md:p-4 border-l-4 border-l-indigo-500 flex justify-between items-center"><div><p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase">Prospectos</p><h3 className="text-xl md:text-2xl font-bold text-slate-900">{leads}</h3></div><div className="bg-indigo-50 p-2 rounded-lg text-indigo-600"><Target size={18}/></div></Card>
-          <Card className={`p-3 md:p-4 border-l-4 flex justify-between items-center ${pending > 0 ? 'border-l-red-500 bg-red-50/30' : 'border-l-slate-300'}`}><div><p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase">Hoy</p><h3 className={`text-xl md:text-2xl font-bold ${pending > 0 ? 'text-red-600' : 'text-slate-900'}`}>{pending}</h3></div><div className="bg-white p-2 rounded-lg text-slate-400 border border-slate-100"><Clock size={18}/></div></Card>
+          <Card className={`p-3 md:p-4 border-l-4 flex justify-between items-center ${pending > 0 ? 'border-l-red-500 bg-red-50/30' : 'border-l-slate-300'}`}><div><p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase">Pendiente Hoy</p><h3 className={`text-xl md:text-2xl font-bold ${pending > 0 ? 'text-red-600' : 'text-slate-900'}`}>{pending}</h3></div><div className="bg-white p-2 rounded-lg text-slate-400 border border-slate-100"><Clock size={18}/></div></Card>
         </div>
 
+        {/* KPIs de Calidad del Dato (NUEVO) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
-          <Card className="p-4 md:p-6 h-full">
-            <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-slate-800"><Calendar className="text-blue-600"/> Agenda {filterUserId !== 'all' && <span className="text-xs font-normal text-slate-400 ml-2">(Filtrada)</span>}</h3>
-            <div className="space-y-3">
-               {relevantContacts.filter((c: any) => c.next_action_date).sort((a: any, b: any) => new Date(a.next_action_date).getTime() - new Date(b.next_action_date).getTime()).slice(0,5).map((c: any) => (
-                 <div key={c.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100 shadow-sm active:bg-blue-50 transition-colors cursor-pointer" onClick={() => { setEditingContact(c); setView('form'); }}>
-                   <div className="min-w-0"><span className="font-bold text-slate-800 text-sm block truncate">{c.next_action}</span><p className="text-xs text-slate-500 mt-1 flex items-center gap-1 truncate"><FileText size={12}/> {c.fiscal_name}</p></div>
-                   <div className="text-right shrink-0 ml-2"><p className={`text-xs font-bold ${c.next_action_date <= today ? 'text-red-600' : 'text-blue-600'}`}>{c.next_action_date}</p><p className="text-xs text-slate-400">{c.next_action_time?.slice(0,5)}</p></div>
-                 </div>
-               ))}
-               {relevantContacts.length === 0 && <div className="p-6 text-center text-slate-400 border-2 border-dashed border-slate-100 rounded-xl">Sin acciones para esta selección.</div>}
-            </div>
-          </Card>
-          <Card className="p-6 flex flex-col justify-center items-center text-center bg-gradient-to-br from-white to-slate-50">
-             <div className="p-4 mb-4"><img src={logoM} alt="Logo" className="w-16 h-16 object-contain opacity-90" /></div>
-             <h3 className="font-bold text-lg text-slate-800 mb-2">Comenzar Trabajo</h3>
-             <Button onClick={() => { setEditingContact(null); setView('form'); }} icon={UserPlus} className="px-6 py-3 shadow-xl w-full md:w-auto">Nuevo Briefing</Button>
-          </Card>
+            <Card className="p-6">
+                <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-slate-800"><BarChart2 className="text-purple-600"/> Calidad de Fichas</h3>
+                <div className="space-y-6">
+                    <div>
+                        <div className="flex justify-between text-sm mb-1">
+                            <span className="text-slate-600 flex items-center gap-2"><FileText size={14}/> Datos Materiales Completos</span>
+                            <span className="font-bold text-slate-800">{materialsPct}%</span>
+                        </div>
+                        <div className="w-full bg-slate-100 rounded-full h-2.5">
+                            <div className="bg-purple-600 h-2.5 rounded-full transition-all duration-1000" style={{ width: `${materialsPct}%` }}></div>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-1">{withMaterials} de {total} contactos tienen materiales registrados.</p>
+                    </div>
+                    <div>
+                        <div className="flex justify-between text-sm mb-1">
+                            <span className="text-slate-600 flex items-center gap-2"><Target size={14}/> Parque Maquinaria Completo</span>
+                            <span className="font-bold text-slate-800">{machinesPct}%</span>
+                        </div>
+                        <div className="w-full bg-slate-100 rounded-full h-2.5">
+                            <div className="bg-orange-500 h-2.5 rounded-full transition-all duration-1000" style={{ width: `${machinesPct}%` }}></div>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-1">{withMachines} de {total} contactos tienen maquinaria registrada.</p>
+                    </div>
+                </div>
+            </Card>
+
+            <Card className="p-6 flex flex-col justify-center items-center text-center bg-gradient-to-br from-white to-slate-50">
+                <div className="p-4 mb-4"><img src={logoM} alt="Logo" className="w-20 h-20 object-contain opacity-90" /></div>
+                <h3 className="font-bold text-lg text-slate-800 mb-2">Acceso Rápido</h3>
+                <div className="flex flex-col gap-3 w-full max-w-xs">
+                    <Button onClick={() => { setEditingContact(null); setView('form'); }} icon={UserPlus} className="shadow-lg justify-center w-full">Nuevo Briefing</Button>
+                    <Button onClick={() => setView('agenda')} icon={Calendar} variant="secondary" className="justify-center w-full border border-slate-200">Ver Agenda Completa</Button>
+                </div>
+            </Card>
         </div>
       </div>
     );
 };
 
-// 3. VISTA LISTA
+// 4. VISTA AGENDA SEMANAL (NUEVA)
+const AgendaView = ({ contacts, setEditingContact, setView }: any) => {
+    const [weekOffset, setWeekOffset] = useState(0);
+
+    // Obtener días de la semana (Lunes a Viernes)
+    const getWeekDays = (offset: number) => {
+        const curr = new Date();
+        const day = curr.getDay();
+        const diff = curr.getDate() - day + (day === 0 ? -6 : 1); 
+        const monday = new Date(curr.setDate(diff));
+        monday.setDate(monday.getDate() + (offset * 7));
+
+        const week = [];
+        for (let i = 0; i < 5; i++) {
+            const d = new Date(monday);
+            d.setDate(monday.getDate() + i);
+            week.push(d.toISOString().split('T')[0]);
+        }
+        return week;
+    };
+
+    const weekDays = getWeekDays(weekOffset);
+    const today = new Date().toISOString().split('T')[0];
+    const dayNames = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+    const tasks = contacts.filter((c: any) => c.next_action_date);
+
+    return (
+        <div className="space-y-4 animate-in fade-in pb-24 h-full flex flex-col">
+            <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm shrink-0 gap-4">
+                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <Calendar className="text-blue-600"/> Agenda Semanal
+                </h2>
+                <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200">
+                    <button onClick={() => setWeekOffset(weekOffset - 1)} className="p-2 hover:bg-white rounded-md shadow-sm transition-all text-slate-600"><ArrowLeft size={18}/></button>
+                    <span className="text-sm font-bold w-32 text-center text-slate-700">
+                        {weekOffset === 0 ? "Esta Semana" : weekOffset === 1 ? "Próxima" : weekOffset === -1 ? "Pasada" : `Semana ${weekOffset > 0 ? '+' : ''}${weekOffset}`}
+                    </span>
+                    <button onClick={() => setWeekOffset(weekOffset + 1)} className="p-2 hover:bg-white rounded-md shadow-sm transition-all text-slate-600"><ArrowRight size={18}/></button>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 h-full overflow-y-auto">
+                {weekDays.map((dateStr, index) => {
+                    const dayTasks = tasks.filter((c: any) => c.next_action_date === dateStr)
+                                          .sort((a: any, b: any) => (a.next_action_time || '00:00').localeCompare(b.next_action_time || '00:00'));
+                    const isToday = dateStr === today;
+
+                    return (
+                        <div key={dateStr} className={`flex flex-col h-full min-h-[200px] rounded-xl border ${isToday ? 'border-blue-400 ring-1 ring-blue-200 bg-blue-50/20' : 'border-slate-200 bg-slate-50/30'}`}>
+                            <div className={`p-3 text-center border-b ${isToday ? 'bg-blue-100/50 border-blue-200' : 'bg-slate-100/50 border-slate-200'} rounded-t-xl`}>
+                                <p className={`text-xs font-bold uppercase ${isToday ? 'text-blue-700' : 'text-slate-500'}`}>{dayNames[index]}</p>
+                                <p className={`text-sm font-bold ${isToday ? 'text-blue-900' : 'text-slate-700'}`}>{dateStr.split('-')[2]}/{dateStr.split('-')[1]}</p>
+                            </div>
+                            <div className="p-2 space-y-2 flex-1">
+                                {dayTasks.map((task: any) => {
+                                    let borderColor = "border-l-blue-500";
+                                    let icon = <Phone size={12} />;
+                                    const action = task.next_action?.toLowerCase() || '';
+                                    if (action.includes("visita")) { borderColor = "border-l-emerald-500"; icon = <Users size={12}/>; }
+                                    if (action.includes("oferta") || action.includes("presupuesto")) { borderColor = "border-l-orange-500"; icon = <FileText size={12}/>; }
+
+                                    return (
+                                        <div key={task.id} onClick={() => { setEditingContact(task); setView('form'); }} className={`bg-white p-3 rounded-lg border border-slate-100 border-l-4 ${borderColor} shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-95`}>
+                                            <div className="flex justify-between items-start mb-1">
+                                                <span className="text-[10px] font-bold bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 flex items-center gap-1">{icon} {task.next_action_time?.slice(0,5)}</span>
+                                            </div>
+                                            <p className="text-xs font-bold text-slate-800 line-clamp-1">{task.fiscal_name}</p>
+                                            <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1 capitalize">{task.next_action}</p>
+                                        </div>
+                                    );
+                                })}
+                                {dayTasks.length === 0 && <div className="h-20 flex items-center justify-center opacity-30"><p className="text-xs text-slate-400 italic">--</p></div>}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
+// 5. VISTA LISTA
 const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, session, setEditingContact, setView, handleDelete }: any) => {
     const [viewFilter, setViewFilter] = useState<string>('all'); 
     
@@ -433,16 +540,28 @@ export default function App() {
   async function fetchContacts() {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('industrial_contacts')
-        .select('*, profiles:user_id(email, full_name, role)')
-        .range(0, 9999)
-        .order('created_at', { ascending: false });
-        
-      if (error) throw error;
-      setContacts(data || []);
+      // PROTECCIÓN: Intentamos cargar relaciones. Si fallan (no hay FK), cargamos solo contactos.
+      try {
+          const { data, error } = await supabase
+            .from('industrial_contacts')
+            .select('*, profiles:user_id(email, full_name, role), contact_materials(id), contact_machinery(id)')
+            .range(0, 9999)
+            .order('created_at', { ascending: false });
+            
+          if (error) throw error;
+          setContacts(data || []);
+      } catch (innerError) {
+          console.warn("Fallo al cargar relaciones (KPIs no funcionarán hasta arreglar FK):", innerError);
+          // Fallback: Carga simple
+          const { data } = await supabase
+            .from('industrial_contacts')
+            .select('*, profiles:user_id(email, full_name, role)')
+            .range(0, 9999)
+            .order('created_at', { ascending: false });
+          setContacts(data || []);
+      }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error fatal:', error);
     } finally {
       setLoading(false);
     }
@@ -518,7 +637,7 @@ export default function App() {
   // --- 3. APP PRINCIPAL ---
   return (
     <div className="flex h-screen bg-slate-100 font-sans text-slate-900 w-full fixed inset-0 max-w-[100vw] overflow-x-hidden">
-       {/* CAMBIO CRÍTICO: Z-INDEX 100 PARA TAPAR EL RESTO */}
+       {/* MENU LATERAL */}
        <aside className={`fixed lg:static inset-y-0 left-0 z-[100] w-72 bg-slate-900 text-white transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 flex flex-col shadow-2xl shrink-0`}>
           <div className="p-6 border-b border-slate-800 flex items-center gap-3 bg-slate-950">
              <div className="bg-white rounded-lg p-1 w-12 h-12 flex items-center justify-center shrink-0">
@@ -531,6 +650,7 @@ export default function App() {
           </div>
           <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
              <button onClick={() => { setView('dashboard'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'dashboard')}><LayoutDashboard size={20}/> <span>Dashboard</span></button>
+             <button onClick={() => { setView('agenda'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'agenda')}><Calendar size={20}/> <span>Agenda</span></button>
              <button onClick={() => { setView('list'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'list')}><Users size={20}/> <span>Base de Datos</span></button>
              {userRole === 'admin' && (<><div className="pt-4 pb-2 px-4"><p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Admin</p></div><button onClick={() => { setView('admin'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'admin')}><UserCog size={20}/> <span>Gestión Usuarios</span></button></>)}
              <div className="pt-6 pb-2 px-4"><p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Acciones</p></div>
@@ -547,11 +667,12 @@ export default function App() {
              <span className="font-bold text-slate-800">Briefing Colaborativo</span><div className="w-8"></div>
           </header>
           
-          {/* CAMBIO CRÍTICO: PADDING AJUSTADO PARA MÓVIL Y OVERFLOW HIDDEN */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 md:p-8 w-full scroll-smooth bg-slate-50">
             <div className="p-1 md:p-0 pb-20 w-full"> 
                 {view === 'dashboard' && <DashboardView contacts={contacts} userRole={userRole} userProfile={userProfile} session={session} setEditingContact={setEditingContact} setView={setView} />}
                 
+                {view === 'agenda' && <AgendaView contacts={contacts} setEditingContact={setEditingContact} setView={setView} />}
+
                 {view === 'list' && (
                     <ListView 
                         contacts={contacts} 
@@ -579,7 +700,6 @@ export default function App() {
             )}
           </div>
        </main>
-       {/* CAMBIO: BACKDROP CON Z-INDEX ALTO */}
        {isSidebarOpen && <div className="fixed inset-0 bg-black/60 z-[90] lg:hidden backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)}></div>}
     </div>
   );
