@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { 
   Search, Briefcase, Factory, Package, Calendar, 
@@ -102,6 +102,9 @@ interface Props {
 export default function ContactForm({ session, initialData, onCancel, onSuccess }: Props) {
     const [activeTab, setActiveTab] = useState('sap');
     const [saving, setSaving] = useState(false);
+    
+    // Referencia para el scroll automático
+    const topRef = useRef<HTMLDivElement>(null);
     
     // Estado principal del contacto
     const [formData, setFormData] = useState({
@@ -267,11 +270,32 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
         }
     };
 
-    const goToNextTab = () => { const idx = TABS.findIndex(t => t.id === activeTab); if(idx < TABS.length -1) setActiveTab(TABS[idx+1].id); window.scrollTo({ top: 0, behavior: 'smooth' }); };
-    const goToPrevTab = () => { const idx = TABS.findIndex(t => t.id === activeTab); if(idx > 0) setActiveTab(TABS[idx-1].id); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+    // Función auxiliar para subir el scroll al cambiar pestaña
+    const scrollToTop = () => {
+        // Busca el contenedor padre que tiene el scroll (en App.tsx tiene clase overflow-y-auto)
+        const scrollableContainer = topRef.current?.closest('.overflow-y-auto');
+        if (scrollableContainer) {
+            scrollableContainer.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+            // Fallback por si acaso
+            topRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+
+    const goToNextTab = () => { 
+        const idx = TABS.findIndex(t => t.id === activeTab); 
+        if(idx < TABS.length -1) setActiveTab(TABS[idx+1].id); 
+        scrollToTop(); // <--- Scroll arriba
+    };
+    
+    const goToPrevTab = () => { 
+        const idx = TABS.findIndex(t => t.id === activeTab); 
+        if(idx > 0) setActiveTab(TABS[idx-1].id); 
+        scrollToTop(); // <--- Scroll arriba
+    };
 
     return (
-        <div className="max-w-6xl mx-auto pb-32 w-full px-0 md:px-2">
+        <div ref={topRef} className="max-w-6xl mx-auto pb-32 w-full px-0 md:px-2">
             
             {/* TÍTULO */}
             <div className="hidden md:block mb-4 mt-2 px-1">
@@ -282,11 +306,11 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
             </div>
 
             {/* TABS NAVEGACIÓN */}
-            <div className="sticky top-0 z-50 py-2 bg-slate-100/95 backdrop-blur-md shadow-sm border-b border-slate-200/50 transition-all -mt-2 md:mt-0 w-full rounded-none md:rounded-xl">
+            <div className="sticky top-0 z-30 py-2 bg-slate-100/95 backdrop-blur-md shadow-sm border-b border-slate-200/50 transition-all -mt-2 md:mt-0 w-full rounded-none md:rounded-xl">
                 <div className="bg-white md:rounded-xl shadow-sm border border-slate-200 p-2 overflow-x-auto no-scrollbar">
                     <div className="flex md:grid md:grid-cols-8 gap-2 min-w-max md:min-w-0"> 
                         {TABS.map(tab => (
-                            <button key={tab.id} onClick={() => setActiveTab(tab.id)} 
+                            <button key={tab.id} onClick={() => { setActiveTab(tab.id); scrollToTop(); }} 
                                 className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all text-[10px] md:text-sm gap-1 border ${activeTab === tab.id ? 'bg-blue-50 border-blue-200 text-blue-700 font-bold shadow-sm' : 'bg-white border-transparent text-slate-500 hover:bg-slate-50'} w-24 md:w-full`}
                             >
                                 <tab.icon size={18} className={`mb-0.5 ${activeTab === tab.id ? 'text-blue-600' : 'text-slate-400'}`}/>
@@ -299,10 +323,9 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
 
             <form onSubmit={handleSubmit} className="space-y-6 w-full px-0.5 mt-4 md:mt-0">
                 
-                {/* 1. SAP (MODIFICADO) */}
+                {/* 1. SAP */}
                 {activeTab === 'sap' && (
                     <Card className="p-4 md:p-8">
-                        {/* Alerta indicativa */}
                         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 flex items-start gap-3">
                             <Info className="text-yellow-600 mt-0.5 shrink-0" size={20} />
                             <div>
@@ -328,7 +351,6 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                                 <input className={inputClass} placeholder="Ej: C000450" value={formData.sap_id} onChange={e => handleChange('sap_id', e.target.value)} />
                             </div>
                         </div>
-                        {/* Botón pequeño y diferenciado */}
                         <div className="flex justify-end mt-6 pt-4 border-t">
                             <Button onClick={goToNextTab} icon={ArrowRight} className="w-auto px-6 py-2 text-sm bg-slate-700 hover:bg-slate-800 border-none shadow-sm">
                                 Siguiente

@@ -16,7 +16,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V9.2 - Login Desplegable"; 
+const APP_VERSION = "Versión 9.3"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
 const SUPER_ADMIN_EMAIL = "jesusblanco@mmesl.com";
@@ -93,7 +93,7 @@ const AdminView = () => {
 
     return (
         <div className="space-y-6 animate-in fade-in pb-24">
-             <Card className="p-6 border-l-4 border-l-purple-600">
+             <Card className="p-6 border-l-4 border-l-purple-600 w-full overflow-x-auto">
                 <SectionHeader title="Gestión de Usuarios" icon={Shield} subtitle="Crear, Editar y Eliminar usuarios" />
                 <form onSubmit={createUser} className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                     <div className="md:col-span-1"><label className={labelClass}>Email</label><input type="email" required className={inputClass} value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="email@..." /></div>
@@ -103,7 +103,7 @@ const AdminView = () => {
                     <Button type="submit" icon={UserPlus} className="w-full">Crear</Button>
                 </form>
                 <div className="overflow-x-auto rounded-lg border border-slate-200 shadow-sm">
-                    <table className="w-full text-sm text-left bg-white">
+                    <table className="w-full text-sm text-left bg-white min-w-[600px]">
                         <thead className="bg-slate-100 text-slate-500 uppercase font-bold text-xs">
                             <tr><th className="p-4">Email</th><th className="p-4">Nombre</th><th className="p-4">Rol</th><th className="p-4 text-right">Acciones</th></tr>
                         </thead>
@@ -169,10 +169,10 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
              </div>
 
              {(userRole !== 'sales') && (
-                 <div className="flex items-center gap-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
-                    <Filter size={14} className="text-slate-400 ml-1" />
+                 <div className="flex items-center gap-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm w-full md:w-auto">
+                    <Filter size={14} className="text-slate-400 ml-1 shrink-0" />
                     <select 
-                        className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer min-w-[150px]"
+                        className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer w-full md:min-w-[150px]"
                         value={filterUserId}
                         onChange={(e) => setFilterUserId(e.target.value)}
                     >
@@ -186,11 +186,11 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
              )}
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 w-full">
-          <Card className="p-4 border-l-4 border-l-blue-600 flex justify-between items-center"><div><p className="text-xs text-slate-500 font-bold uppercase">Total</p><h3 className="text-2xl font-bold text-slate-900">{total}</h3></div><div className="bg-blue-50 p-2 rounded-lg text-blue-600"><Users size={20}/></div></Card>
-          <Card className="p-4 border-l-4 border-l-emerald-500 flex justify-between items-center"><div><p className="text-xs text-slate-500 font-bold uppercase">Clientes</p><h3 className="text-2xl font-bold text-slate-900">{clients}</h3></div><div className="bg-emerald-50 p-2 rounded-lg text-emerald-600"><CheckCircle2 size={20}/></div></Card>
-          <Card className="p-4 border-l-4 border-l-indigo-500 flex justify-between items-center"><div><p className="text-xs text-slate-500 font-bold uppercase">Prospectos</p><h3 className="text-2xl font-bold text-slate-900">{leads}</h3></div><div className="bg-indigo-50 p-2 rounded-lg text-indigo-600"><Target size={20}/></div></Card>
-          <Card className={`p-4 border-l-4 flex justify-between items-center ${pending > 0 ? 'border-l-red-500 bg-red-50/30' : 'border-l-slate-300'}`}><div><p className="text-xs text-slate-500 font-bold uppercase">Hoy</p><h3 className={`text-2xl font-bold ${pending > 0 ? 'text-red-600' : 'text-slate-900'}`}>{pending}</h3></div><div className="bg-white p-2 rounded-lg text-slate-400 border border-slate-100"><Clock size={20}/></div></Card>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full">
+          <Card className="p-3 md:p-4 border-l-4 border-l-blue-600 flex justify-between items-center"><div><p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase">Total</p><h3 className="text-xl md:text-2xl font-bold text-slate-900">{total}</h3></div><div className="bg-blue-50 p-2 rounded-lg text-blue-600"><Users size={18}/></div></Card>
+          <Card className="p-3 md:p-4 border-l-4 border-l-emerald-500 flex justify-between items-center"><div><p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase">Clientes</p><h3 className="text-xl md:text-2xl font-bold text-slate-900">{clients}</h3></div><div className="bg-emerald-50 p-2 rounded-lg text-emerald-600"><CheckCircle2 size={18}/></div></Card>
+          <Card className="p-3 md:p-4 border-l-4 border-l-indigo-500 flex justify-between items-center"><div><p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase">Prospectos</p><h3 className="text-xl md:text-2xl font-bold text-slate-900">{leads}</h3></div><div className="bg-indigo-50 p-2 rounded-lg text-indigo-600"><Target size={18}/></div></Card>
+          <Card className={`p-3 md:p-4 border-l-4 flex justify-between items-center ${pending > 0 ? 'border-l-red-500 bg-red-50/30' : 'border-l-slate-300'}`}><div><p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase">Hoy</p><h3 className={`text-xl md:text-2xl font-bold ${pending > 0 ? 'text-red-600' : 'text-slate-900'}`}>{pending}</h3></div><div className="bg-white p-2 rounded-lg text-slate-400 border border-slate-100"><Clock size={18}/></div></Card>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
@@ -258,7 +258,7 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
                </div>
 
                {(userRole === 'manager' || userRole === 'admin') && (
-                   <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200 w-full md:w-auto overflow-x-auto">
+                   <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200 w-full md:w-auto overflow-x-auto no-scrollbar">
                        <button onClick={() => setViewFilter('all')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors whitespace-nowrap ${viewFilter === 'all' ? 'bg-white text-blue-600 shadow-sm border' : 'text-slate-500 hover:text-slate-700'}`}>Todos</button>
                        <button onClick={() => setViewFilter('mine')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors whitespace-nowrap ${viewFilter === 'mine' ? 'bg-white text-blue-600 shadow-sm border' : 'text-slate-500 hover:text-slate-700'}`}>Míos</button>
                        <div className="h-4 w-px bg-slate-300 mx-1"></div>
@@ -283,12 +283,12 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
           <div className="grid gap-3 w-full">
             {filtered.length === 0 && <div className="text-center py-10 text-slate-400">No se encontraron resultados.</div>}
             {filtered.map((c: any) => (
-              <Card key={c.id} className="p-4 hover:shadow-lg transition-all border border-slate-200">
-                <div className="flex justify-between items-start gap-3">
-                  <div className="flex-1 min-w-0">
+              <Card key={c.id} className="p-4 hover:shadow-lg transition-all border border-slate-200 w-full max-w-full">
+                <div className="flex flex-col md:flex-row justify-between items-start gap-3 w-full">
+                  <div className="flex-1 min-w-0 w-full">
                     <div className="flex flex-col gap-1 mb-2">
                         <h3 className="font-bold text-base text-slate-900 truncate">{c.fiscal_name}</h3>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                             <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border w-fit ${c.sap_status === 'Cliente SAP' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>{c.sap_status}</span>
                             {(userRole !== 'sales' && c.profiles) && (
                                 <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border bg-slate-100 text-slate-500 border-slate-200 flex items-center gap-1 max-w-[120px] truncate">
@@ -297,9 +297,15 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
                             )}
                         </div>
                     </div>
-                    <div className="flex flex-col gap-1 text-sm text-slate-600"><span className="flex items-center gap-2 truncate"><Users size={14} className="text-slate-400 shrink-0"/> {c.contact_person || 'Sin contacto'}</span><span className="flex items-center gap-2 truncate"><Briefcase size={14} className="text-slate-400 shrink-0"/> <span className="text-slate-500 text-xs">Titular:</span> {c.profiles?.full_name || c.profiles?.email || 'N/A'}</span></div>
+                    <div className="flex flex-col gap-1 text-sm text-slate-600">
+                        <span className="flex items-center gap-2 truncate"><Users size={14} className="text-slate-400 shrink-0"/> {c.contact_person || 'Sin contacto'}</span>
+                        <span className="flex items-center gap-2 truncate"><Briefcase size={14} className="text-slate-400 shrink-0"/> <span className="text-slate-500 text-xs">Titular:</span> {c.profiles?.full_name || c.profiles?.email || 'N/A'}</span>
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-2 shrink-0"><button onClick={() => { setEditingContact(c); setView('form'); }} className="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 rounded-lg"><Edit size={18}/></button>{(userRole === 'admin' || c.user_id === session.user.id) && (<button onClick={() => handleDelete(c.id)} className="p-2 text-slate-400 hover:text-red-600 bg-slate-50 rounded-lg"><Trash2 size={18}/></button>)}</div>
+                  <div className="flex gap-2 shrink-0 self-end md:self-start w-full md:w-auto justify-end border-t md:border-none pt-2 md:pt-0 mt-2 md:mt-0">
+                      <button onClick={() => { setEditingContact(c); setView('form'); }} className="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 rounded-lg flex-1 md:flex-none flex justify-center"><Edit size={18}/></button>
+                      {(userRole === 'admin' || c.user_id === session.user.id) && (<button onClick={() => handleDelete(c.id)} className="p-2 text-slate-400 hover:text-red-600 bg-slate-50 rounded-lg flex-1 md:flex-none flex justify-center"><Trash2 size={18}/></button>)}
+                  </div>
                 </div>
               </Card>
             ))}
@@ -327,20 +333,15 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   
-  // NUEVO: Lista de usuarios para el login
   const [loginUsersList, setLoginUsersList] = useState<any[]>([]);
-
-  // NUEVO: ESTADO PARA CONTROLAR EL MODO RECUPERACIÓN DE CONTRASEÑA
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [newPassword, setNewPassword] = useState('');
 
-  // Cargar lista de usuarios al inicio (Para el login)
   useEffect(() => {
     async function loadLoginUsers() {
         const { data } = await supabase.from('profiles').select('email, full_name').order('full_name');
         if (data) setLoginUsersList(data);
     }
-    // Solo cargamos si no hay sesión
     if (!session) loadLoginUsers();
   }, [session]);
 
@@ -351,18 +352,16 @@ export default function App() {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // AQUÍ DETECTAMOS SI VIENE DEL LINK DE RECUPERACIÓN
       if (event === 'PASSWORD_RECOVERY') {
         setRecoveryMode(true);
       }
-      
       setSession(session);
       if (session) fetchUserProfile(session.user.id);
       else { 
           setContacts([]); 
           setUserRole('sales'); 
           setUserProfile(null); 
-          setRecoveryMode(false); // Reset al salir
+          setRecoveryMode(false);
       }
     });
 
@@ -387,7 +386,6 @@ export default function App() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     if (!email) return alert("Selecciona un usuario");
-    
     setAuthLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) alert(error.message);
@@ -411,18 +409,15 @@ export default function App() {
     }
   }
 
-  // NUEVA FUNCIÓN: ACTUALIZAR CONTRASEÑA FINAL
   async function handleUpdateUserPassword(e: React.FormEvent) {
     e.preventDefault();
     setAuthLoading(true);
-    
     const { error } = await supabase.auth.updateUser({ password: newPassword });
-    
     if (error) {
         alert("Error al guardar: " + error.message);
     } else {
         alert("Contraseña actualizada correctamente. Ya puedes usar el CRM.");
-        setRecoveryMode(false); // Quitamos el modo recuperación
+        setRecoveryMode(false);
         setNewPassword('');
     }
     setAuthLoading(false);
@@ -486,7 +481,7 @@ export default function App() {
       );
   }
 
-  // --- 2. PANTALLA LOGIN MODIFICADA (CON SELECT) ---
+  // --- 2. PANTALLA LOGIN ---
   if (!session) {
     return (
         <div className="h-screen w-full flex items-center justify-center bg-slate-100 p-4">
@@ -499,60 +494,32 @@ export default function App() {
                 <p className="text-center text-slate-400 text-xs mb-8">Inicia sesión para acceder</p>
                 
                 <form onSubmit={handleLogin} className="space-y-4">
-                    
-                    {/* CAMBIO: INPUT EMAIL POR SELECT */}
                     <div>
                         <label className={labelClass}>Usuario</label>
                         <div className="relative">
-                            <select 
-                                required 
-                                className={`${selectClass} cursor-pointer`} 
-                                value={email} 
-                                onChange={e => setEmail(e.target.value)}
-                            >
+                            <select required className={`${selectClass} cursor-pointer`} value={email} onChange={e => setEmail(e.target.value)}>
                                 <option value="">-- Selecciona tu nombre --</option>
-                                {loginUsersList.map(u => (
-                                    <option key={u.email} value={u.email}>
-                                        {u.full_name || u.email}
-                                    </option>
-                                ))}
+                                {loginUsersList.map(u => (<option key={u.email} value={u.email}>{u.full_name || u.email}</option>))}
                             </select>
-                            {/* Flechita custom para que se vea bonito */}
                             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
                                 <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" fillRule="evenodd"></path></svg>
                             </div>
                         </div>
                     </div>
-
-                    <div>
-                        <label className={labelClass}>Contraseña</label>
-                        <input type="password" required className={inputClass} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" />
-                    </div>
-                    
-                    <Button type="submit" className="w-full py-3" disabled={authLoading}>
-                        {authLoading ? <Loader2 className="animate-spin"/> : 'Entrar'}
-                    </Button>
-                    
-                    <div className="text-center pt-2">
-                        <button 
-                            type="button" 
-                            onClick={handleResetPassword}
-                            className="text-xs text-blue-600 hover:text-blue-800 font-bold underline"
-                            disabled={authLoading}
-                        >
-                           ¿Olvidaste tu contraseña?
-                        </button>
-                    </div>
+                    <div><label className={labelClass}>Contraseña</label><input type="password" required className={inputClass} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" /></div>
+                    <Button type="submit" className="w-full py-3" disabled={authLoading}>{authLoading ? <Loader2 className="animate-spin"/> : 'Entrar'}</Button>
+                    <div className="text-center pt-2"><button type="button" onClick={handleResetPassword} className="text-xs text-blue-600 hover:text-blue-800 font-bold underline" disabled={authLoading}>¿Olvidaste tu contraseña?</button></div>
                 </form>
             </Card>
         </div>
     );
   }
 
-  // --- 3. APP PRINCIPAL (Si hay sesión y NO es recovery) ---
+  // --- 3. APP PRINCIPAL ---
   return (
     <div className="flex h-screen bg-slate-100 font-sans text-slate-900 w-full fixed inset-0 max-w-[100vw] overflow-x-hidden">
-       <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 flex flex-col shadow-2xl shrink-0`}>
+       {/* CAMBIO CRÍTICO: Z-INDEX 100 PARA TAPAR EL RESTO */}
+       <aside className={`fixed lg:static inset-y-0 left-0 z-[100] w-72 bg-slate-900 text-white transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 flex flex-col shadow-2xl shrink-0`}>
           <div className="p-6 border-b border-slate-800 flex items-center gap-3 bg-slate-950">
              <div className="bg-white rounded-lg p-1 w-12 h-12 flex items-center justify-center shrink-0">
                 <img src={logoM} alt="Logo" className="w-full h-full object-contain" />
@@ -573,14 +540,16 @@ export default function App() {
              <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:bg-red-950/30 transition-colors"><LogOut size={20}/> <span>Cerrar Sesión</span></button>
           </div>
        </aside>
+       
        <main className="flex-1 flex flex-col h-screen overflow-hidden relative w-full bg-slate-50">
           <header className="bg-white border-b border-slate-200 p-3 flex items-center justify-between lg:hidden shadow-sm z-10 shrink-0 h-14">
              <button onClick={() => setIsSidebarOpen(true)} className="text-slate-600 p-2 active:bg-slate-100 rounded"><Menu size={24} /></button>
              <span className="font-bold text-slate-800">Briefing Colaborativo</span><div className="w-8"></div>
           </header>
           
-          <div className="flex-1 overflow-y-auto overflow-x-hidden p-0 md:p-8 w-full scroll-smooth bg-slate-50">
-            <div className="p-1 md:p-0 pb-20"> 
+          {/* CAMBIO CRÍTICO: PADDING AJUSTADO PARA MÓVIL Y OVERFLOW HIDDEN */}
+          <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 md:p-8 w-full scroll-smooth bg-slate-50">
+            <div className="p-1 md:p-0 pb-20 w-full"> 
                 {view === 'dashboard' && <DashboardView contacts={contacts} userRole={userRole} userProfile={userProfile} session={session} setEditingContact={setEditingContact} setView={setView} />}
                 
                 {view === 'list' && (
@@ -610,7 +579,8 @@ export default function App() {
             )}
           </div>
        </main>
-       {isSidebarOpen && <div className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)}></div>}
+       {/* CAMBIO: BACKDROP CON Z-INDEX ALTO */}
+       {isSidebarOpen && <div className="fixed inset-0 bg-black/60 z-[90] lg:hidden backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)}></div>}
     </div>
   );
 }
