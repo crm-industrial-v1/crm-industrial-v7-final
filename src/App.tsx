@@ -16,7 +16,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V9 - Preguntas claves"; 
+const APP_VERSION = "V9.1 - Login Desplegable"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
 const SUPER_ADMIN_EMAIL = "jesusblanco@mmesl.com";
@@ -327,9 +327,22 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   
+  // NUEVO: Lista de usuarios para el login
+  const [loginUsersList, setLoginUsersList] = useState<any[]>([]);
+
   // NUEVO: ESTADO PARA CONTROLAR EL MODO RECUPERACIÓN DE CONTRASEÑA
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [newPassword, setNewPassword] = useState('');
+
+  // Cargar lista de usuarios al inicio (Para el login)
+  useEffect(() => {
+    async function loadLoginUsers() {
+        const { data } = await supabase.from('profiles').select('email, full_name').order('full_name');
+        if (data) setLoginUsersList(data);
+    }
+    // Solo cargamos si no hay sesión
+    if (!session) loadLoginUsers();
+  }, [session]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -373,6 +386,8 @@ export default function App() {
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
+    if (!email) return alert("Selecciona un usuario");
+    
     setAuthLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) alert(error.message);
@@ -381,7 +396,7 @@ export default function App() {
 
   async function handleResetPassword() {
     if (!email) {
-        return alert("Por favor, introduce tu email en el campo de arriba para poder enviarte el correo de recuperación.");
+        return alert("Por favor, selecciona tu usuario en el campo de arriba para poder enviarte el correo de recuperación.");
     }
     setAuthLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -448,7 +463,6 @@ export default function App() {
   const navBtnClass = (active: boolean) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${active ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`;
 
   // --- 1. PANTALLA ESPECIAL: RESTABLECER CONTRASEÑA ---
-  // Esta pantalla solo sale si Supabase detecta que vienes del email de recuperación
   if (session && recoveryMode) {
       return (
         <div className="h-screen w-full flex items-center justify-center bg-slate-100 p-4">
@@ -472,7 +486,7 @@ export default function App() {
       );
   }
 
-  // --- 2. PANTALLA LOGIN (Si no hay sesión) ---
+  // --- 2. PANTALLA LOGIN MODIFICADA (CON SELECT) ---
   if (!session) {
     return (
         <div className="h-screen w-full flex items-center justify-center bg-slate-100 p-4">
@@ -483,10 +497,41 @@ export default function App() {
                 <h1 className="text-2xl font-bold text-center text-slate-900 mb-2">Briefing Colaborativo</h1>
                 <p className="text-center text-slate-500 font-bold mb-1">{APP_VERSION}</p>
                 <p className="text-center text-slate-400 text-xs mb-8">Inicia sesión para acceder</p>
+                
                 <form onSubmit={handleLogin} className="space-y-4">
-                    <div><label className={labelClass}>Email Corporativo</label><input type="email" required className={inputClass} value={email} onChange={e => setEmail(e.target.value)} placeholder="usuario@empresa.com" /></div>
-                    <div><label className={labelClass}>Contraseña</label><input type="password" required className={inputClass} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" /></div>
-                    <Button type="submit" className="w-full py-3" disabled={authLoading}>{authLoading ? <Loader2 className="animate-spin"/> : 'Entrar'}</Button>
+                    
+                    {/* CAMBIO: INPUT EMAIL POR SELECT */}
+                    <div>
+                        <label className={labelClass}>Usuario</label>
+                        <div className="relative">
+                            <select 
+                                required 
+                                className={`${selectClass} cursor-pointer`} 
+                                value={email} 
+                                onChange={e => setEmail(e.target.value)}
+                            >
+                                <option value="">-- Selecciona tu nombre --</option>
+                                {loginUsersList.map(u => (
+                                    <option key={u.email} value={u.email}>
+                                        {u.full_name || u.email}
+                                    </option>
+                                ))}
+                            </select>
+                            {/* Flechita custom para que se vea bonito */}
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
+                                <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" fillRule="evenodd"></path></svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className={labelClass}>Contraseña</label>
+                        <input type="password" required className={inputClass} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" />
+                    </div>
+                    
+                    <Button type="submit" className="w-full py-3" disabled={authLoading}>
+                        {authLoading ? <Loader2 className="animate-spin"/> : 'Entrar'}
+                    </Button>
                     
                     <div className="text-center pt-2">
                         <button 
