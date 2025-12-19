@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, UserPlus, Search, Trash2, Edit, 
   Briefcase, CheckCircle2, Clock, Target, FileText, 
   LogOut, Shield, UserCog, Menu, Loader2, Calendar, User, Lock, Filter, KeyRound,
-  ArrowLeft, ArrowRight, Phone, BarChart2, CheckSquare, X, CalendarPlus, Save, AlertCircle, ClipboardList, Activity, MoveRight
+  ArrowLeft, ArrowRight, Phone, BarChart2, CheckSquare, X, CalendarPlus, Save, AlertCircle, ClipboardList, Activity
 } from 'lucide-react';
 
 // --- IMPORTAMOS EL NUEVO LOGO ---
@@ -17,7 +17,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V10.10 - Drag & Drop"; 
+const APP_VERSION = "V10.11 - Final Stable"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
 const SUPER_ADMIN_EMAIL = "jesusblanco@mmesl.com";
@@ -29,7 +29,7 @@ const selectClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text
 
 // --- COMPONENTES AUXILIARES ---
 
-// 0.1. MODAL PARA AGENDAR ACCIÓN RÁPIDA (CON OBJETIVO)
+// 0.1. MODAL PARA AGENDAR ACCIÓN RÁPIDA
 const NewActionModal = ({ isOpen, onClose, onSave, clientName }: any) => {
     const [actionType, setActionType] = useState('Llamada de Seguimiento');
     const [objective, setObjective] = useState(''); 
@@ -73,12 +73,10 @@ const NewActionModal = ({ isOpen, onClose, onSave, clientName }: any) => {
     );
 };
 
-// 0.2. MODAL DE GESTIÓN DE TAREA (AGENDA - CON REPROGRAMACIÓN)
+// 0.2. MODAL DE GESTIÓN DE TAREA (AGENDA)
 const TaskActionModal = ({ isOpen, onClose, onAction, taskTitle, currentTask }: any) => {
-    const [step, setStep] = useState(1); // 1: Inicio, 2: Finalizar, 3: Reprogramar
+    const [step, setStep] = useState(1);
     const [report, setReport] = useState('');
-    
-    // Estado para nueva tarea / reprogramación
     const [newActionType, setNewActionType] = useState('Llamada de Seguimiento');
     const [newDate, setNewDate] = useState('');
     const [newTime, setNewTime] = useState('09:00');
@@ -108,24 +106,24 @@ const TaskActionModal = ({ isOpen, onClose, onAction, taskTitle, currentTask }: 
                     </h3>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
                 </div>
-                
-                {/* MENU PRINCIPAL */}
                 {step === 1 && (
                     <div className="p-5 space-y-4">
                         <div><p className="text-xs font-bold text-slate-500 uppercase mb-1">Tarea Actual</p><p className="text-sm font-medium text-slate-800 bg-blue-50 p-2 rounded border border-blue-100 text-blue-900">{taskTitle}</p></div>
                         <div className="flex flex-col gap-3">
                             <button onClick={() => setStep(2)} className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all"><CheckCircle2 size={18}/> Marcar como Realizada / Finalizar</button>
-                            <button onClick={() => setStep(3)} className="w-full py-3 bg-white border-2 border-blue-100 hover:border-blue-300 text-blue-700 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all"><MoveRight size={18}/> Cambiar Fecha (Reprogramar)</button>
+                            <button onClick={() => setStep(3)} className="w-full py-3 bg-white border-2 border-blue-100 hover:border-blue-300 text-blue-700 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all"><ArrowRight size={18}/> Cambiar Fecha (Reprogramar)</button>
                             <button onClick={() => onAction('delete', '', null)} className="w-full py-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg text-xs font-bold transition-all">Eliminar Tarea (Error)</button>
                         </div>
                     </div>
                 )}
-
-                {/* PASO 2: FINALIZAR (Reporte) */}
                 {step === 2 && (
                     <div className="p-5 space-y-4 animate-in slide-in-from-right-4 duration-300">
                         <div className="bg-emerald-50 p-3 rounded text-xs text-emerald-800 mb-2 border border-emerald-100 flex items-center gap-2"><CheckCircle2 size={14}/> Estás cerrando esta tarea.</div>
-                        <div><label className={labelClass}>Resultado / Reporte (Obligatorio *)</label><textarea className={`w-full p-3 border rounded-lg text-sm h-28 focus:ring-2 outline-none resize-none transition-all ${!isReportValid ? 'border-red-300 focus:ring-red-200' : 'border-slate-300 focus:ring-emerald-500'}`} placeholder="Describe qué ha ocurrido..." value={report} onChange={(e) => setReport(e.target.value)} autoFocus /></div>
+                        <div>
+                            <label className={labelClass}>Resultado / Reporte (Obligatorio *)</label>
+                            <textarea className={`w-full p-3 border rounded-lg text-sm h-28 focus:ring-2 outline-none resize-none transition-all ${!isReportValid ? 'border-red-300 focus:ring-red-200' : 'border-slate-300 focus:ring-emerald-500'}`} placeholder="Describe qué ha ocurrido..." value={report} onChange={(e) => setReport(e.target.value)} autoFocus />
+                            {!isReportValid && <p className="text-[10px] text-red-500 mt-1 flex items-center gap-1"><AlertCircle size={10}/> El reporte es obligatorio.</p>}
+                        </div>
                         <div className="flex gap-2 pt-2">
                             <button onClick={() => setStep(1)} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg font-bold text-sm">Atrás</button>
                             <button onClick={() => onAction('complete', report, null)} disabled={!isReportValid} className="flex-[2] py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg font-bold text-sm shadow-lg">Finalizar Tarea</button>
@@ -133,8 +131,6 @@ const TaskActionModal = ({ isOpen, onClose, onAction, taskTitle, currentTask }: 
                         <button onClick={() => { if(!isReportValid) return; setStep(4); }} disabled={!isReportValid} className="w-full py-2 text-blue-600 font-bold text-xs hover:bg-blue-50 rounded mt-1 disabled:opacity-50">¿Quieres Agendar la Siguiente ya?</button>
                     </div>
                 )}
-
-                {/* PASO 3: REPROGRAMAR (Mover fecha) */}
                 {step === 3 && (
                     <div className="p-5 space-y-4 animate-in slide-in-from-right-4 duration-300">
                         <div className="bg-blue-50 p-3 rounded text-xs text-blue-800 mb-2 border border-blue-100">Cambia la fecha de esta tarea sin cerrarla.</div>
@@ -145,8 +141,6 @@ const TaskActionModal = ({ isOpen, onClose, onAction, taskTitle, currentTask }: 
                         </div>
                     </div>
                 )}
-
-                {/* PASO 4: FINALIZAR Y NUEVA (Del paso 2) */}
                 {step === 4 && (
                     <div className="p-5 space-y-4 animate-in slide-in-from-right-4 duration-300">
                         <div className="bg-slate-100 p-2 rounded text-xs text-slate-500 mb-2">Reporte guardado. Define la siguiente acción.</div>
@@ -279,38 +273,14 @@ const AgendaView = ({ contacts, setEditingContact, setView, onActionComplete }: 
     const [selectedTask, setSelectedTask] = useState<any>(null);
     const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
 
-    // Manejador del Drag Start
-    const handleDragStart = (e: React.DragEvent, taskId: string) => {
-        setDraggedTaskId(taskId);
-        // Efecto visual para móviles
-        e.dataTransfer.effectAllowed = "move"; 
-    };
-
-    // Manejador del Drag Over (Necesario para permitir el Drop)
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault(); 
-        e.dataTransfer.dropEffect = "move";
-    };
-
-    // Manejador del Drop (Soltar)
+    const handleDragStart = (e: React.DragEvent, taskId: string) => { setDraggedTaskId(taskId); e.dataTransfer.effectAllowed = "move"; };
+    const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; };
     const handleDrop = async (e: React.DragEvent, targetDate: string) => {
         e.preventDefault();
         if (!draggedTaskId) return;
-
-        // Actualización optimista (UI primero)
         const task = contacts.find((c: any) => c.id === draggedTaskId);
         if (task && task.next_action_date !== targetDate) {
-            try {
-                const { error } = await supabase
-                    .from('industrial_contacts')
-                    .update({ next_action_date: targetDate })
-                    .eq('id', draggedTaskId);
-                
-                if (error) throw error;
-                await onActionComplete(); // Recargar datos reales
-            } catch (err: any) {
-                alert("Error al mover la tarea: " + err.message);
-            }
+            try { const { error } = await supabase.from('industrial_contacts').update({ next_action_date: targetDate }).eq('id', draggedTaskId); if (error) throw error; await onActionComplete(); } catch (err: any) { alert("Error: " + err.message); }
         }
         setDraggedTaskId(null);
     };
@@ -322,7 +292,6 @@ const AgendaView = ({ contacts, setEditingContact, setView, onActionComplete }: 
             const today = new Date().toISOString().split('T')[0];
             const timeNow = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
             
-            // Lógica de Reprogramación
             if (type === 'reschedule') {
                 updates = { next_action_date: nextActionData.date, next_action_time: nextActionData.time };
             } else {
@@ -346,54 +315,8 @@ const AgendaView = ({ contacts, setEditingContact, setView, onActionComplete }: 
     return (
         <div className="space-y-4 animate-in fade-in pb-24 h-full flex flex-col">
             <TaskActionModal isOpen={modalOpen} onClose={() => setModalOpen(false)} taskTitle={selectedTask?.next_action || 'Tarea'} currentTask={selectedTask} onAction={handleModalAction} />
-            
-            <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm shrink-0 gap-4">
-                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Calendar className="text-blue-600"/> Agenda Semanal</h2>
-                <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200"><button onClick={() => setWeekOffset(weekOffset - 1)} className="p-2 hover:bg-white rounded-md shadow-sm transition-all text-slate-600"><ArrowLeft size={18}/></button><span className="text-sm font-bold w-32 text-center text-slate-700">{weekOffset === 0 ? "Esta Semana" : weekOffset === 1 ? "Próxima" : weekOffset === -1 ? "Pasada" : `Semana ${weekOffset > 0 ? '+' : ''}${weekOffset}`}</span><button onClick={() => setWeekOffset(weekOffset + 1)} className="p-2 hover:bg-white rounded-md shadow-sm transition-all text-slate-600"><ArrowRight size={18}/></button></div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 h-full overflow-y-auto">
-                {weekDays.map((dateStr, index) => {
-                    const dayTasks = tasks.filter((c: any) => c.next_action_date === dateStr).sort((a: any, b: any) => (a.next_action_time || '00:00').localeCompare(b.next_action_time || '00:00'));
-                    const isToday = dateStr === today;
-
-                    return (
-                        <div 
-                            key={dateStr} 
-                            onDragOver={handleDragOver}
-                            onDrop={(e) => handleDrop(e, dateStr)}
-                            className={`flex flex-col h-full min-h-[200px] rounded-xl border transition-colors ${isToday ? 'border-blue-400 ring-1 ring-blue-200 bg-blue-50/20' : 'border-slate-200 bg-slate-50/30'}`}
-                        >
-                            <div className={`p-3 text-center border-b ${isToday ? 'bg-blue-100/50 border-blue-200' : 'bg-slate-100/50 border-slate-200'} rounded-t-xl`}>
-                                <p className={`text-xs font-bold uppercase ${isToday ? 'text-blue-700' : 'text-slate-500'}`}>{dayNames[index]}</p>
-                                <p className={`text-sm font-bold ${isToday ? 'text-blue-900' : 'text-slate-700'}`}>{dateStr.split('-')[2]}/{dateStr.split('-')[1]}</p>
-                            </div>
-                            <div className="p-2 space-y-2 flex-1">
-                                {dayTasks.map((task: any) => {
-                                    let borderColor = "border-l-blue-500"; let icon = <Phone size={12} />; const action = task.next_action?.toLowerCase() || ''; if (action.includes("visita")) { borderColor = "border-l-emerald-500"; icon = <Users size={12}/>; } if (action.includes("oferta") || action.includes("presupuesto")) { borderColor = "border-l-orange-500"; icon = <FileText size={12}/>; }
-                                    
-                                    return (
-                                        <div 
-                                            key={task.id}
-                                            draggable 
-                                            onDragStart={(e) => handleDragStart(e, task.id)}
-                                            onClick={() => { setSelectedTask(task); setModalOpen(true); }}
-                                            className={`bg-white p-3 rounded-lg border border-slate-100 border-l-4 ${borderColor} shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md transition-all active:scale-95 group relative`}
-                                        >
-                                            <div className="flex justify-between items-start mb-1">
-                                                <span className="text-[10px] font-bold bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 flex items-center gap-1">{icon} {task.next_action_time?.slice(0,5)}</span>
-                                            </div>
-                                            <p className="text-xs font-bold text-slate-800 line-clamp-1">{task.fiscal_name}</p>
-                                            <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1 capitalize">{task.next_action}</p>
-                                        </div>
-                                    );
-                                })}
-                                {dayTasks.length === 0 && <div className="h-20 flex items-center justify-center opacity-30"><p className="text-xs text-slate-400 italic">--</p></div>}
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
+            <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm shrink-0 gap-4"><h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Calendar className="text-blue-600"/> Agenda Semanal</h2><div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200"><button onClick={() => setWeekOffset(weekOffset - 1)} className="p-2 hover:bg-white rounded-md shadow-sm transition-all text-slate-600"><ArrowLeft size={18}/></button><span className="text-sm font-bold w-32 text-center text-slate-700">{weekOffset === 0 ? "Esta Semana" : weekOffset === 1 ? "Próxima" : weekOffset === -1 ? "Pasada" : `Semana ${weekOffset > 0 ? '+' : ''}${weekOffset}`}</span><button onClick={() => setWeekOffset(weekOffset + 1)} className="p-2 hover:bg-white rounded-md shadow-sm transition-all text-slate-600"><ArrowRight size={18}/></button></div></div>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 h-full overflow-y-auto">{weekDays.map((dateStr, index) => { const dayTasks = tasks.filter((c: any) => c.next_action_date === dateStr).sort((a: any, b: any) => (a.next_action_time || '00:00').localeCompare(b.next_action_time || '00:00')); const isToday = dateStr === today; return ( <div key={dateStr} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, dateStr)} className={`flex flex-col h-full min-h-[200px] rounded-xl border transition-colors ${isToday ? 'border-blue-400 ring-1 ring-blue-200 bg-blue-50/20' : 'border-slate-200 bg-slate-50/30'}`}><div className={`p-3 text-center border-b ${isToday ? 'bg-blue-100/50 border-blue-200' : 'bg-slate-100/50 border-slate-200'} rounded-t-xl`}><p className={`text-xs font-bold uppercase ${isToday ? 'text-blue-700' : 'text-slate-500'}`}>{dayNames[index]}</p><p className={`text-sm font-bold ${isToday ? 'text-blue-900' : 'text-slate-700'}`}>{dateStr.split('-')[2]}/{dateStr.split('-')[1]}</p></div><div className="p-2 space-y-2 flex-1">{dayTasks.map((task: any) => { let borderColor = "border-l-blue-500"; let icon = <Phone size={12} />; const action = task.next_action?.toLowerCase() || ''; if (action.includes("visita")) { borderColor = "border-l-emerald-500"; icon = <Users size={12}/>; } if (action.includes("oferta") || action.includes("presupuesto")) { borderColor = "border-l-orange-500"; icon = <FileText size={12}/>; } return ( <div key={task.id} draggable onDragStart={(e) => handleDragStart(e, task.id)} onClick={() => { setSelectedTask(task); setModalOpen(true); }} className={`bg-white p-3 rounded-lg border border-slate-100 border-l-4 ${borderColor} shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md transition-all active:scale-95 group relative`}><div className="flex justify-between items-start mb-1"><span className="text-[10px] font-bold bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 flex items-center gap-1">{icon} {task.next_action_time?.slice(0,5)}</span></div><p className="text-xs font-bold text-slate-800 line-clamp-1">{task.fiscal_name}</p><p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1 capitalize">{task.next_action}</p></div> ); })}{dayTasks.length === 0 && <div className="h-20 flex items-center justify-center opacity-30"><p className="text-xs text-slate-400 italic">--</p></div>}</div></div> ); })}</div>
         </div>
     );
 };
@@ -401,33 +324,14 @@ const AgendaView = ({ contacts, setEditingContact, setView, onActionComplete }: 
 // 5. VISTA LISTA
 const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, session, setEditingContact, setView, handleDelete, onOpenNewAction }: any) => {
     const [viewFilter, setViewFilter] = useState<string>('all'); 
-    
-    // ESTADOS PARA EL MODAL DE HISTORIAL
     const [historyModalOpen, setHistoryModalOpen] = useState(false);
     const [selectedClientHistory, setSelectedClientHistory] = useState<any>(null);
-
-    // ESTADO PARA EL MODAL DE NUEVA ACCIÓN
     const [newActionModalOpen, setNewActionModalOpen] = useState(false);
     const [selectedClientForAction, setSelectedClientForAction] = useState<any>(null);
 
-    // Función para manejar el guardado de la nueva acción
     const handleSaveNewAction = async (action: string, date: string, time: string) => {
         if (!selectedClientForAction) return;
-        try {
-            const { error } = await supabase
-                .from('industrial_contacts')
-                .update({ 
-                    next_action: action, 
-                    next_action_date: date, 
-                    next_action_time: time 
-                })
-                .eq('id', selectedClientForAction.id);
-            
-            if (error) throw error;
-            setNewActionModalOpen(false);
-        } catch (err: any) {
-            alert("Error: " + err.message);
-        }
+        try { const { error } = await supabase.from('industrial_contacts').update({ next_action: action, next_action_date: date, next_action_time: time }).eq('id', selectedClientForAction.id); if (error) throw error; setNewActionModalOpen(false); } catch (err: any) { alert("Error: " + err.message); }
     };
 
     let displayContacts = contacts;
@@ -439,26 +343,8 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
 
     return (
       <div className="space-y-4 animate-in fade-in duration-500 pb-24 w-full overflow-hidden">
-        
-        {/* MODAL DE HISTORIAL */}
-        <ClientHistoryModal 
-            isOpen={historyModalOpen} 
-            onClose={() => setHistoryModalOpen(false)} 
-            client={selectedClientHistory} 
-            onOpenNewAction={(client: any) => { 
-                setSelectedClientForAction(client); 
-                setNewActionModalOpen(true); 
-            }}
-        />
-
-        {/* MODAL DE NUEVA ACCIÓN */}
-        <NewActionModal
-            isOpen={newActionModalOpen}
-            onClose={() => setNewActionModalOpen(false)}
-            onSave={handleSaveNewAction}
-            clientName={selectedClientForAction?.fiscal_name || 'Cliente'}
-        />
-
+        <ClientHistoryModal isOpen={historyModalOpen} onClose={() => setHistoryModalOpen(false)} client={selectedClientHistory} onOpenNewAction={(client: any) => { setSelectedClientForAction(client); setNewActionModalOpen(true); }} />
+        <NewActionModal isOpen={newActionModalOpen} onClose={() => setNewActionModalOpen(false)} onSave={handleSaveNewAction} clientName={selectedClientForAction?.fiscal_name || 'Cliente'} />
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                <div><h2 className="text-xl font-bold text-slate-800">Base de Datos</h2><p className="text-xs text-slate-500">{userRole === 'sales' ? 'Mis Fichas' : `Mostrando: ${viewFilter === 'all' ? 'Todos' : viewFilter === 'mine' ? 'Mis Fichas' : 'Filtro Usuario'}`}</p></div>
@@ -466,7 +352,6 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
            </div>
            <div className="relative w-full"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} /><input type="text" placeholder="Buscar empresa o contacto..." className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
         </div>
-
         {loading ? <div className="text-center p-20"><Loader2 className="animate-spin mx-auto text-blue-600 mb-4" size={32}/><p className="text-slate-500">Cargando...</p></div> : (
           <div className="grid gap-3 w-full">
             {filtered.length === 0 && <div className="text-center py-10 text-slate-400">No se encontraron resultados.</div>}
@@ -478,21 +363,14 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
                         <h3 className="font-bold text-base text-slate-900 truncate">{c.fiscal_name}</h3>
                         <div className="flex gap-2 flex-wrap">
                             <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border w-fit ${c.sap_status === 'Cliente SAP' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>{c.sap_status}</span>
-                            {(userRole !== 'sales' && c.profiles) && (
-                                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border bg-slate-100 text-slate-500 border-slate-200 flex items-center gap-1 max-w-[120px] truncate">
-                                    <User size={10}/> {c.profiles.full_name || c.profiles.email.split('@')[0]}
-                                </span>
-                            )}
+                            {(userRole !== 'sales' && c.profiles) && (<span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border bg-slate-100 text-slate-500 border-slate-200 flex items-center gap-1 max-w-[120px] truncate"><User size={10}/> {c.profiles.full_name || c.profiles.email.split('@')[0]}</span>)}
                         </div>
                     </div>
-                    <div className="flex flex-col gap-1 text-sm text-slate-600">
-                        <span className="flex items-center gap-2 truncate"><Users size={14} className="text-slate-400 shrink-0"/> {c.contact_person || 'Sin contacto'}</span>
-                        <span className="flex items-center gap-2 truncate"><Briefcase size={14} className="text-slate-400 shrink-0"/> <span className="text-slate-500 text-xs">Titular:</span> {c.profiles?.full_name || c.profiles?.email || 'N/A'}</span>
-                    </div>
+                    <div className="flex flex-col gap-1 text-sm text-slate-600"><span className="flex items-center gap-2 truncate"><Users size={14} className="text-slate-400 shrink-0"/> {c.contact_person || 'Sin contacto'}</span><span className="flex items-center gap-2 truncate"><Briefcase size={14} className="text-slate-400 shrink-0"/> <span className="text-slate-500 text-xs">Titular:</span> {c.profiles?.full_name || c.profiles?.email || 'N/A'}</span></div>
                   </div>
                   <div className="flex gap-2 shrink-0 self-end md:self-start w-full md:w-auto justify-end border-t md:border-none pt-2 md:pt-0 mt-2 md:mt-0">
-                      {/* BOTÓN HISTORIAL */}
                       <button onClick={() => { setSelectedClientHistory(c); setHistoryModalOpen(true); }} className="p-2 text-slate-400 hover:text-purple-600 bg-slate-50 hover:bg-purple-50 rounded-lg flex-1 md:flex-none flex justify-center transition-colors" title="Ver Historial"><ClipboardList size={18}/></button>
+                      <button onClick={() => onOpenNewAction(c)} className="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 rounded-lg flex-1 md:flex-none flex justify-center"><CalendarPlus size={18}/></button>
                       <button onClick={() => { setEditingContact(c); setView('form'); }} className="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 rounded-lg flex-1 md:flex-none flex justify-center"><Edit size={18}/></button>
                       {(userRole === 'admin' || c.user_id === session.user.id) && (<button onClick={() => handleDelete(c.id)} className="p-2 text-slate-400 hover:text-red-600 bg-slate-50 rounded-lg flex-1 md:flex-none flex justify-center"><Trash2 size={18}/></button>)}
                   </div>
@@ -527,135 +405,33 @@ export default function App() {
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [newPassword, setNewPassword] = useState('');
 
-  useEffect(() => {
-    async function loadLoginUsers() {
-        const { data } = await supabase.from('profiles').select('email, full_name').order('full_name');
-        if (data) setLoginUsersList(data);
-    }
-    if (!session) loadLoginUsers();
-  }, [session]);
+  useEffect(() => { async function loadLoginUsers() { const { data } = await supabase.from('profiles').select('email, full_name').order('full_name'); if (data) setLoginUsersList(data); } if (!session) loadLoginUsers(); }, [session]);
+  useEffect(() => { supabase.auth.getSession().then(({ data: { session } }) => { setSession(session); if (session) fetchUserProfile(session.user.id); }); const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => { if (event === 'PASSWORD_RECOVERY') { setRecoveryMode(true); } setSession(session); if (session) fetchUserProfile(session.user.id); else { setContacts([]); setUserRole('sales'); setUserProfile(null); setRecoveryMode(false); } }); return () => subscription.unsubscribe(); }, []);
+  useEffect(() => { if (session) fetchContacts(); const handleResize = () => setIsSidebarOpen(window.innerWidth >= 1024); window.addEventListener('resize', handleResize); return () => window.removeEventListener('resize', handleResize); }, [session]);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) fetchUserProfile(session.user.id);
-    });
+  async function fetchUserProfile(userId: string) { const { data } = await supabase.from('profiles').select('*').eq('id', userId).single(); if (data) { setUserRole(data.role); setUserProfile(data); } }
+  async function handleLogin(e: React.FormEvent) { e.preventDefault(); if (!email) return alert("Selecciona un usuario"); setAuthLoading(true); const { error } = await supabase.auth.signInWithPassword({ email, password }); if (error) alert(error.message); setAuthLoading(false); }
+  async function handleResetPassword() { if (!email) { return alert("Por favor, selecciona tu usuario en el campo de arriba para poder enviarte el correo de recuperación."); } setAuthLoading(true); const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: 'https://crm-industrial-v7-final.vercel.app/', }); setAuthLoading(false); if (error) { alert("Error: " + error.message); } else { alert("¡Enviado! Revisa tu bandeja de entrada (y spam) para restablecer tu contraseña."); } }
+  async function handleUpdateUserPassword(e: React.FormEvent) { e.preventDefault(); setAuthLoading(true); const { error } = await supabase.auth.updateUser({ password: newPassword }); if (error) { alert("Error al guardar: " + error.message); } else { alert("Contraseña actualizada correctamente. Ya puedes usar el CRM."); setRecoveryMode(false); setNewPassword(''); } setAuthLoading(false); }
+  async function handleLogout() { setLoading(true); await supabase.auth.signOut(); setSession(null); window.location.reload(); }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setRecoveryMode(true);
-      }
-      setSession(session);
-      if (session) fetchUserProfile(session.user.id);
-      else { 
-          setContacts([]); 
-          setUserRole('sales'); 
-          setUserProfile(null); 
-          setRecoveryMode(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (session) fetchContacts();
-    const handleResize = () => setIsSidebarOpen(window.innerWidth >= 1024);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [session]);
-
-  async function fetchUserProfile(userId: string) {
-    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
-    if (data) {
-        setUserRole(data.role);
-        setUserProfile(data);
-    }
-  }
-
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    if (!email) return alert("Selecciona un usuario");
-    setAuthLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) alert(error.message);
-    setAuthLoading(false);
-  }
-
-  async function handleResetPassword() {
-    if (!email) {
-        return alert("Por favor, selecciona tu usuario en el campo de arriba para poder enviarte el correo de recuperación.");
-    }
-    setAuthLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'https://crm-industrial-v7-final.vercel.app/',
-    });
-    setAuthLoading(false);
-    
-    if (error) {
-        alert("Error: " + error.message);
-    } else {
-        alert("¡Enviado! Revisa tu bandeja de entrada (y spam) para restablecer tu contraseña.");
-    }
-  }
-
-  async function handleUpdateUserPassword(e: React.FormEvent) {
-    e.preventDefault();
-    setAuthLoading(true);
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    if (error) {
-        alert("Error al guardar: " + error.message);
-    } else {
-        alert("Contraseña actualizada correctamente. Ya puedes usar el CRM.");
-        setRecoveryMode(false);
-        setNewPassword('');
-    }
-    setAuthLoading(false);
-  }
-
-  async function handleLogout() {
-    setLoading(true);
-    await supabase.auth.signOut();
-    setSession(null);
-    window.location.reload(); 
-  }
-
+  // FETCH CONTACTS
   async function fetchContacts() {
     try {
       setLoading(true);
-      // PROTECCIÓN: Intentamos cargar relaciones. Si fallan (no hay FK), cargamos solo contactos.
       try {
-          const { data, error } = await supabase
-            .from('industrial_contacts')
-            .select('*, profiles:user_id(email, full_name, role), contact_materials(id), contact_machinery(id)')
-            .range(0, 9999)
-            .order('created_at', { ascending: false });
-            
+          const { data, error } = await supabase.from('industrial_contacts').select('*, profiles:user_id(email, full_name, role), contact_materials(id), contact_machinery(id)').range(0, 9999).order('created_at', { ascending: false });
           if (error) throw error;
           setContacts(data || []);
       } catch (innerError) {
-          console.warn("Fallo al cargar relaciones (KPIs no funcionarán hasta arreglar FK):", innerError);
-          // Fallback: Carga simple
-          const { data } = await supabase
-            .from('industrial_contacts')
-            .select('*, profiles:user_id(email, full_name, role)')
-            .range(0, 9999)
-            .order('created_at', { ascending: false });
+          console.warn("Fallo al cargar relaciones:", innerError);
+          const { data } = await supabase.from('industrial_contacts').select('*, profiles:user_id(email, full_name, role)').range(0, 9999).order('created_at', { ascending: false });
           setContacts(data || []);
       }
-    } catch (error) {
-      console.error('Error fatal:', error);
-    } finally {
-      setLoading(false);
-    }
+    } catch (error) { console.error('Error fatal:', error); } finally { setLoading(false); }
   }
 
-  async function handleDelete(id: string) {
-    if (!window.confirm('¿Borrar registro permanentemente?')) return;
-    const { error } = await supabase.from('industrial_contacts').delete().eq('id', id);
-    if (!error) fetchContacts();
-    else alert("No tienes permisos para borrar este registro.");
-  }
+  async function handleDelete(id: string) { if (!window.confirm('¿Borrar registro permanentemente?')) return; const { error } = await supabase.from('industrial_contacts').delete().eq('id', id); if (!error) fetchContacts(); else alert("No tienes permisos para borrar este registro."); }
 
   const navBtnClass = (active: boolean) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${active ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`;
 
@@ -664,19 +440,12 @@ export default function App() {
       return (
         <div className="h-screen w-full flex items-center justify-center bg-slate-100 p-4">
             <Card className="max-w-md p-8 shadow-2xl w-11/12 border-t-4 border-t-blue-600">
-                <div className="flex justify-center mb-6 text-blue-600">
-                    <KeyRound size={48} />
-                </div>
+                <div className="flex justify-center mb-6 text-blue-600"><KeyRound size={48} /></div>
                 <h1 className="text-2xl font-bold text-center text-slate-900 mb-2">Nueva Contraseña</h1>
                 <p className="text-center text-slate-500 text-sm mb-6">Introduce tu nueva contraseña para acceder.</p>
                 <form onSubmit={handleUpdateUserPassword} className="space-y-4">
-                    <div>
-                        <label className={labelClass}>Nueva Contraseña</label>
-                        <input type="password" required className={inputClass} value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} />
-                    </div>
-                    <Button type="submit" className="w-full py-3" disabled={authLoading}>
-                        {authLoading ? <Loader2 className="animate-spin"/> : 'Guardar Nueva Contraseña'}
-                    </Button>
+                    <div><label className={labelClass}>Nueva Contraseña</label><input type="password" required className={inputClass} value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} /></div>
+                    <Button type="submit" className="w-full py-3" disabled={authLoading}>{authLoading ? <Loader2 className="animate-spin"/> : 'Guardar Nueva Contraseña'}</Button>
                 </form>
             </Card>
         </div>
@@ -688,26 +457,12 @@ export default function App() {
     return (
         <div className="h-screen w-full flex items-center justify-center bg-slate-100 p-4">
             <Card className="max-w-md p-8 shadow-2xl w-11/12">
-                <div className="flex justify-center mb-6">
-                    <img src={logoM} alt="Logo" className="w-20 h-20 object-contain" />
-                </div>
+                <div className="flex justify-center mb-6"><img src={logoM} alt="Logo" className="w-20 h-20 object-contain" /></div>
                 <h1 className="text-2xl font-bold text-center text-slate-900 mb-2">Briefing Colaborativo</h1>
                 <p className="text-center text-slate-500 font-bold mb-1">{APP_VERSION}</p>
                 <p className="text-center text-slate-400 text-xs mb-8">Inicia sesión para acceder</p>
-                
                 <form onSubmit={handleLogin} className="space-y-4">
-                    <div>
-                        <label className={labelClass}>Usuario</label>
-                        <div className="relative">
-                            <select required className={`${selectClass} cursor-pointer`} value={email} onChange={e => setEmail(e.target.value)}>
-                                <option value="">-- Selecciona tu nombre --</option>
-                                {loginUsersList.map(u => (<option key={u.email} value={u.email}>{u.full_name || u.email}</option>))}
-                            </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
-                                <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" fillRule="evenodd"></path></svg>
-                            </div>
-                        </div>
-                    </div>
+                    <div><label className={labelClass}>Usuario</label><div className="relative"><select required className={`${selectClass} cursor-pointer`} value={email} onChange={e => setEmail(e.target.value)}><option value="">-- Selecciona tu nombre --</option>{loginUsersList.map(u => (<option key={u.email} value={u.email}>{u.full_name || u.email}</option>))}</select><div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500"><svg className="h-4 w-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" fillRule="evenodd"></path></svg></div></div></div>
                     <div><label className={labelClass}>Contraseña</label><input type="password" required className={inputClass} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" /></div>
                     <Button type="submit" className="w-full py-3" disabled={authLoading}>{authLoading ? <Loader2 className="animate-spin"/> : 'Entrar'}</Button>
                     <div className="text-center pt-2"><button type="button" onClick={handleResetPassword} className="text-xs text-blue-600 hover:text-blue-800 font-bold underline" disabled={authLoading}>¿Olvidaste tu contraseña?</button></div>
@@ -723,13 +478,8 @@ export default function App() {
        {/* MENU LATERAL */}
        <aside className={`fixed lg:static inset-y-0 left-0 z-[100] w-72 bg-slate-900 text-white transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 flex flex-col shadow-2xl shrink-0`}>
           <div className="p-6 border-b border-slate-800 flex items-center gap-3 bg-slate-950">
-             <div className="bg-white rounded-lg p-1 w-12 h-12 flex items-center justify-center shrink-0">
-                <img src={logoM} alt="Logo" className="w-full h-full object-contain" />
-             </div>
-             <div className="min-w-0">
-                <span className="text-lg font-bold tracking-tight block truncate">Briefing Colaborativo</span>
-                <span className="text-[10px] block opacity-70">{APP_VERSION}</span>
-             </div>
+             <div className="bg-white rounded-lg p-1 w-12 h-12 flex items-center justify-center shrink-0"><img src={logoM} alt="Logo" className="w-full h-full object-contain" /></div>
+             <div className="min-w-0"><span className="text-lg font-bold tracking-tight block truncate">Briefing Colaborativo</span><span className="text-[10px] block opacity-70">{APP_VERSION}</span></div>
           </div>
           <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
              <button onClick={() => { setView('dashboard'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'dashboard')}><LayoutDashboard size={20}/> <span>Dashboard</span></button>
@@ -739,9 +489,7 @@ export default function App() {
              <div className="pt-6 pb-2 px-4"><p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Acciones</p></div>
              <button onClick={() => { setEditingContact(null); setView('form'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className={navBtnClass(view === 'form')}><UserPlus size={20}/> <span>Briefing</span></button>
           </nav>
-          <div className="p-4 bg-slate-950 border-t border-slate-800 space-y-2">
-             <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:bg-red-950/30 transition-colors"><LogOut size={20}/> <span>Cerrar Sesión</span></button>
-          </div>
+          <div className="p-4 bg-slate-950 border-t border-slate-800 space-y-2"><button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:bg-red-950/30 transition-colors"><LogOut size={20}/> <span>Cerrar Sesión</span></button></div>
        </aside>
        
        <main className="flex-1 flex flex-col h-screen overflow-hidden relative w-full bg-slate-50">
@@ -754,7 +502,6 @@ export default function App() {
             <div className="p-1 md:p-0 pb-20 w-full"> 
                 {view === 'dashboard' && <DashboardView contacts={contacts} userRole={userRole} userProfile={userProfile} session={session} setEditingContact={setEditingContact} setView={setView} />}
                 
-                {/* VISTA AGENDA NUEVA CON MODAL */}
                 {view === 'agenda' && <AgendaView contacts={contacts} setEditingContact={setEditingContact} setView={setView} onActionComplete={fetchContacts} />}
 
                 {view === 'list' && (
