@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, UserPlus, Search, Trash2, Edit, 
   Briefcase, CheckCircle2, Clock, Target, FileText, 
   LogOut, Shield, UserCog, Menu, Loader2, Calendar, User, Lock, Filter, KeyRound,
-  ArrowLeft, ArrowRight, Phone, BarChart2, CheckSquare, X, CalendarPlus, Save, AlertCircle, ClipboardList, Activity
+  ArrowLeft, ArrowRight, Phone, BarChart2, CheckSquare, X, CalendarPlus, Save, AlertCircle, ClipboardList, Activity, MoveRight
 } from 'lucide-react';
 
 // --- IMPORTAMOS EL NUEVO LOGO ---
@@ -17,7 +17,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V10.5 - Historial Cliente"; 
+const APP_VERSION = "V10.10 - Drag & Drop"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
 const SUPER_ADMIN_EMAIL = "jesusblanco@mmesl.com";
@@ -29,39 +29,130 @@ const selectClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text
 
 // --- COMPONENTES AUXILIARES ---
 
-// 0. NUEVO: MODAL DE GESTIÓN DE TAREA (2 PASOS)
-const TaskActionModal = ({ isOpen, onClose, onAction, taskTitle }: any) => {
-    const [step, setStep] = useState(1);
+// 0.1. MODAL PARA AGENDAR ACCIÓN RÁPIDA (CON OBJETIVO)
+const NewActionModal = ({ isOpen, onClose, onSave, clientName }: any) => {
+    const [actionType, setActionType] = useState('Llamada de Seguimiento');
+    const [objective, setObjective] = useState(''); 
+    const [date, setDate] = useState('');
+    const [time, setTime] = useState('09:00');
+
+    useEffect(() => {
+        if (isOpen) {
+            setActionType('Llamada de Seguimiento');
+            setObjective('');
+            setDate('');
+            setTime('09:00');
+        }
+    }, [isOpen]);
+
+    if (!isOpen) return null;
+
+    const handleSubmit = () => {
+        if (!date) return alert("Por favor, selecciona una fecha.");
+        let finalAction = actionType;
+        if (objective) { finalAction = `${actionType} [Obj: ${objective}]`; }
+        onSave(finalAction, date, time);
+    };
+
+    return (
+        <div className="fixed inset-0 z-[210] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-200">
+                <div className="bg-blue-600 p-4 flex justify-between items-center text-white">
+                    <h3 className="font-bold flex items-center gap-2"><CalendarPlus size={20}/> Agendar Próximo Paso</h3>
+                    <button onClick={onClose} className="hover:bg-white/20 p-1 rounded-full transition-colors"><X size={20}/></button>
+                </div>
+                <div className="p-5 space-y-4">
+                    <div className="bg-blue-50 p-2 rounded border border-blue-100 mb-2"><p className="text-[10px] uppercase font-bold text-blue-500">Cliente</p><p className="text-sm font-bold text-blue-900 truncate">{clientName}</p></div>
+                    <div><label className={labelClass}>¿Qué vas a hacer?</label><select className={selectClass} value={actionType} onChange={e => setActionType(e.target.value)}><option>Llamada de Seguimiento</option><option>Visita Técnica</option><option>Visita de Cierre</option><option>Enviar Presupuesto</option><option>Demo Producto</option></select></div>
+                    <div><label className={labelClass}>¿Cuál es el Objetivo? (Interés)</label><select className={selectClass} value={objective} onChange={e => setObjective(e.target.value)}><option value="">-- Selecciona Objetivo --</option><option value="Visita Técnica">Visita Técnica</option><option value="Oferta Materiales">Oferta Materiales</option><option value="Propuesta Maquinaria">Propuesta Maquinaria</option><option value="Mantenimiento">Mantenimiento</option><option value="Proyecto Ingeniería">Proyecto de Ingeniería</option></select></div>
+                    <div className="grid grid-cols-2 gap-3"><div><label className={labelClass}>Fecha</label><input type="date" className={inputClass} value={date} onChange={e => setDate(e.target.value)} required /></div><div><label className={labelClass}>Hora</label><input type="time" className={inputClass} value={time} onChange={e => setTime(e.target.value)} required /></div></div>
+                    <div className="pt-2"><button onClick={handleSubmit} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95"><Save size={18}/> Guardar en Agenda</button></div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// 0.2. MODAL DE GESTIÓN DE TAREA (AGENDA - CON REPROGRAMACIÓN)
+const TaskActionModal = ({ isOpen, onClose, onAction, taskTitle, currentTask }: any) => {
+    const [step, setStep] = useState(1); // 1: Inicio, 2: Finalizar, 3: Reprogramar
     const [report, setReport] = useState('');
+    
+    // Estado para nueva tarea / reprogramación
     const [newActionType, setNewActionType] = useState('Llamada de Seguimiento');
     const [newDate, setNewDate] = useState('');
     const [newTime, setNewTime] = useState('09:00');
 
-    useEffect(() => { if (isOpen) { setStep(1); setReport(''); setNewDate(''); setNewTime('09:00'); } }, [isOpen]);
+    useEffect(() => { 
+        if (isOpen) { 
+            setStep(1); 
+            setReport(''); 
+            if(currentTask) {
+                setNewDate(currentTask.next_action_date || '');
+                setNewTime(currentTask.next_action_time || '09:00');
+            }
+        } 
+    }, [isOpen, currentTask]);
+
     if (!isOpen) return null;
-    const handleNextStep = () => { setStep(2); };
+
     const isReportValid = report.trim().length > 5;
 
     return (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
                 <div className="bg-slate-50 p-4 border-b border-slate-100 flex justify-between items-center">
-                    <h3 className="font-bold text-slate-800 flex items-center gap-2">{step === 1 ? <CheckSquare className="text-blue-600" size={18}/> : <CalendarPlus className="text-blue-600" size={18}/>} {step === 1 ? 'Reportar Actividad' : 'Agendar Siguiente'}</h3>
+                    <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                        {step === 3 ? <Calendar className="text-blue-600" size={18}/> : <CheckSquare className="text-blue-600" size={18}/>} 
+                        {step === 3 ? 'Reprogramar Tarea' : 'Gestionar Tarea'}
+                    </h3>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
                 </div>
+                
+                {/* MENU PRINCIPAL */}
                 {step === 1 && (
-                    <div className="p-5 space-y-4 animate-in slide-in-from-left-4 duration-300">
-                        <div><p className="text-xs font-bold text-slate-500 uppercase mb-1">Tarea Finalizada</p><p className="text-sm font-medium text-slate-800 bg-blue-50 p-2 rounded border border-blue-100 text-blue-900">{taskTitle}</p></div>
-                        <div><label className={labelClass}>Resultado / Reporte (Obligatorio *)</label><textarea className={`w-full p-3 border rounded-lg text-sm h-28 focus:ring-2 outline-none resize-none transition-all ${!isReportValid ? 'border-red-300 focus:ring-red-200' : 'border-slate-300 focus:ring-blue-500'}`} placeholder="Describe qué ha ocurrido (mínimo 5 letras)..." value={report} onChange={(e) => setReport(e.target.value)} autoFocus />{!isReportValid && <p className="text-[10px] text-red-500 mt-1 flex items-center gap-1"><AlertCircle size={10}/> Debes escribir un reporte.</p>}</div>
-                        <div className="flex flex-col gap-2 pt-2"><button onClick={handleNextStep} disabled={!isReportValid} className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-colors shadow-md"><CalendarPlus size={16}/> Guardar y Agendar Siguiente</button><div className="grid grid-cols-2 gap-2 mt-1"><button onClick={() => onAction('complete', report, null)} disabled={!isReportValid} className="py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed border border-emerald-200 rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-colors"><CheckCircle2 size={14}/> Finalizar (Cerrar)</button><button onClick={() => onAction('delete', report, null)} disabled={!isReportValid} className="py-2.5 bg-white hover:bg-red-50 text-slate-500 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed border border-slate-200 hover:border-red-200 rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-colors"><Trash2 size={14}/> Cancelar Tarea</button></div></div>
+                    <div className="p-5 space-y-4">
+                        <div><p className="text-xs font-bold text-slate-500 uppercase mb-1">Tarea Actual</p><p className="text-sm font-medium text-slate-800 bg-blue-50 p-2 rounded border border-blue-100 text-blue-900">{taskTitle}</p></div>
+                        <div className="flex flex-col gap-3">
+                            <button onClick={() => setStep(2)} className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all"><CheckCircle2 size={18}/> Marcar como Realizada / Finalizar</button>
+                            <button onClick={() => setStep(3)} className="w-full py-3 bg-white border-2 border-blue-100 hover:border-blue-300 text-blue-700 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all"><MoveRight size={18}/> Cambiar Fecha (Reprogramar)</button>
+                            <button onClick={() => onAction('delete', '', null)} className="w-full py-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg text-xs font-bold transition-all">Eliminar Tarea (Error)</button>
+                        </div>
                     </div>
                 )}
+
+                {/* PASO 2: FINALIZAR (Reporte) */}
                 {step === 2 && (
                     <div className="p-5 space-y-4 animate-in slide-in-from-right-4 duration-300">
-                        <div className="bg-slate-50 p-3 rounded text-xs text-slate-600 mb-2 italic border-l-2 border-slate-300">"Reporte guardado. Ahora define el próximo paso."</div>
-                        <div><label className={labelClass}>Próxima Acción</label><select className={selectClass} value={newActionType} onChange={e => setNewActionType(e.target.value)}><option>Llamada de Seguimiento</option><option>Visita Técnica</option><option>Visita de Cierre</option><option>Enviar Presupuesto</option><option>Demo Producto</option></select></div>
+                        <div className="bg-emerald-50 p-3 rounded text-xs text-emerald-800 mb-2 border border-emerald-100 flex items-center gap-2"><CheckCircle2 size={14}/> Estás cerrando esta tarea.</div>
+                        <div><label className={labelClass}>Resultado / Reporte (Obligatorio *)</label><textarea className={`w-full p-3 border rounded-lg text-sm h-28 focus:ring-2 outline-none resize-none transition-all ${!isReportValid ? 'border-red-300 focus:ring-red-200' : 'border-slate-300 focus:ring-emerald-500'}`} placeholder="Describe qué ha ocurrido..." value={report} onChange={(e) => setReport(e.target.value)} autoFocus /></div>
+                        <div className="flex gap-2 pt-2">
+                            <button onClick={() => setStep(1)} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg font-bold text-sm">Atrás</button>
+                            <button onClick={() => onAction('complete', report, null)} disabled={!isReportValid} className="flex-[2] py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg font-bold text-sm shadow-lg">Finalizar Tarea</button>
+                        </div>
+                        <button onClick={() => { if(!isReportValid) return; setStep(4); }} disabled={!isReportValid} className="w-full py-2 text-blue-600 font-bold text-xs hover:bg-blue-50 rounded mt-1 disabled:opacity-50">¿Quieres Agendar la Siguiente ya?</button>
+                    </div>
+                )}
+
+                {/* PASO 3: REPROGRAMAR (Mover fecha) */}
+                {step === 3 && (
+                    <div className="p-5 space-y-4 animate-in slide-in-from-right-4 duration-300">
+                        <div className="bg-blue-50 p-3 rounded text-xs text-blue-800 mb-2 border border-blue-100">Cambia la fecha de esta tarea sin cerrarla.</div>
+                        <div className="grid grid-cols-2 gap-3"><div><label className={labelClass}>Nueva Fecha</label><input type="date" className={inputClass} value={newDate} onChange={e => setNewDate(e.target.value)} required /></div><div><label className={labelClass}>Nueva Hora</label><input type="time" className={inputClass} value={newTime} onChange={e => setNewTime(e.target.value)} required /></div></div>
+                        <div className="flex gap-2 pt-4">
+                            <button onClick={() => setStep(1)} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg font-bold text-sm">Atrás</button>
+                            <button onClick={() => onAction('reschedule', '', { date: newDate, time: newTime })} className="flex-[2] py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-sm shadow-lg">Guardar Cambio</button>
+                        </div>
+                    </div>
+                )}
+
+                {/* PASO 4: FINALIZAR Y NUEVA (Del paso 2) */}
+                {step === 4 && (
+                    <div className="p-5 space-y-4 animate-in slide-in-from-right-4 duration-300">
+                        <div className="bg-slate-100 p-2 rounded text-xs text-slate-500 mb-2">Reporte guardado. Define la siguiente acción.</div>
+                        <div><label className={labelClass}>Próxima Acción</label><select className={selectClass} value={newActionType} onChange={e => setNewActionType(e.target.value)}><option>Llamada de Seguimiento</option><option>Visita Técnica</option><option>Visita de Cierre</option><option>Enviar Presupuesto</option></select></div>
                         <div className="grid grid-cols-2 gap-3"><div><label className={labelClass}>Fecha</label><input type="date" className={inputClass} value={newDate} onChange={e => setNewDate(e.target.value)} required /></div><div><label className={labelClass}>Hora</label><input type="time" className={inputClass} value={newTime} onChange={e => setNewTime(e.target.value)} required /></div></div>
-                        <div className="flex gap-2 pt-4 border-t border-slate-100 mt-2"><button onClick={() => setStep(1)} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg font-bold text-sm">Atrás</button><button onClick={() => { if(!newDate) return alert("Selecciona una fecha"); onAction('complete_new', report, { action: newActionType, date: newDate, time: newTime }); }} className="flex-[2] py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2 shadow-lg"><Save size={16}/> Confirmar Agenda</button></div>
+                        <div className="flex gap-2 pt-4"><button onClick={() => setStep(2)} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg font-bold text-sm">Atrás</button><button onClick={() => onAction('complete_new', report, { action: newActionType, date: newDate, time: newTime })} className="flex-[2] py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-sm shadow-lg">Confirmar Agenda</button></div>
                     </div>
                 )}
             </div>
@@ -69,8 +160,8 @@ const TaskActionModal = ({ isOpen, onClose, onAction, taskTitle }: any) => {
     );
 };
 
-// 0.1. NUEVO: MODAL DE HISTORIAL Y RESUMEN
-const ClientHistoryModal = ({ isOpen, onClose, client }: any) => {
+// 0.3. MODAL DE HISTORIAL
+const ClientHistoryModal = ({ isOpen, onClose, client, onOpenNewAction }: any) => {
     if (!isOpen || !client) return null;
 
     const materialsCount = client.contact_materials?.length || 0;
@@ -79,56 +170,26 @@ const ClientHistoryModal = ({ isOpen, onClose, client }: any) => {
     return (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-slate-200 flex flex-col">
-                {/* Header */}
                 <div className="bg-slate-50 p-4 border-b border-slate-100 flex justify-between items-center shrink-0">
-                    <div>
-                        <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-                            <Activity className="text-blue-600"/> Historial del Cliente
-                        </h3>
-                        <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">{client.fiscal_name}</p>
-                    </div>
+                    <div><h3 className="font-bold text-slate-800 text-lg flex items-center gap-2"><Activity className="text-blue-600"/> Historial del Cliente</h3><p className="text-xs text-slate-500 font-bold uppercase tracking-wider">{client.fiscal_name}</p></div>
                     <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-500"><X size={20}/></button>
                 </div>
 
                 <div className="p-6 overflow-y-auto space-y-6">
-                    
-                    {/* BLOQUE 1: PENDIENTE */}
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
                         <h4 className="text-xs font-bold text-amber-800 uppercase mb-2 flex items-center gap-2"><Clock size={14}/> Próxima Acción</h4>
                         {client.next_action_date ? (
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <p className="font-bold text-slate-800">{client.next_action}</p>
-                                    <p className="text-xs text-slate-600">{client.next_action_date} a las {client.next_action_time}</p>
-                                </div>
-                                <span className="bg-white text-amber-700 text-xs font-bold px-3 py-1 rounded-full border border-amber-200 shadow-sm">Pendiente</span>
-                            </div>
-                        ) : (
-                            <p className="text-sm text-slate-500 italic">No hay acciones agendadas.</p>
-                        )}
+                            <div className="flex justify-between items-center"><div><p className="font-bold text-slate-800">{client.next_action}</p><p className="text-xs text-slate-600">{client.next_action_date} a las {client.next_action_time}</p></div><span className="bg-white text-amber-700 text-xs font-bold px-3 py-1 rounded-full border border-amber-200 shadow-sm">Pendiente</span></div>
+                        ) : (<p className="text-sm text-slate-500 italic">No hay acciones agendadas.</p>)}
                     </div>
 
-                    {/* BLOQUE 2: RESUMEN FLASH */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                            <p className="text-[10px] uppercase font-bold text-slate-400">Sector</p>
-                            <p className="text-sm font-bold text-slate-700 truncate" title={client.sector}>{client.sector || '-'}</p>
-                        </div>
-                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                            <p className="text-[10px] uppercase font-bold text-slate-400">Volumen</p>
-                            <p className="text-sm font-bold text-slate-700 truncate" title={client.volume}>{client.volume || '-'}</p>
-                        </div>
-                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                            <p className="text-[10px] uppercase font-bold text-slate-400">Máquinas</p>
-                            <p className="text-sm font-bold text-slate-700">{machinesCount} Reg.</p>
-                        </div>
-                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                            <p className="text-[10px] uppercase font-bold text-slate-400">Materiales</p>
-                            <p className="text-sm font-bold text-slate-700">{materialsCount} Reg.</p>
-                        </div>
+                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100"><p className="text-[10px] uppercase font-bold text-slate-400">Sector</p><p className="text-sm font-bold text-slate-700 truncate" title={client.sector}>{client.sector || '-'}</p></div>
+                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100"><p className="text-[10px] uppercase font-bold text-slate-400">Volumen</p><p className="text-sm font-bold text-slate-700 truncate" title={client.volume}>{client.volume || '-'}</p></div>
+                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100"><p className="text-[10px] uppercase font-bold text-slate-400">Máquinas</p><p className="text-sm font-bold text-slate-700">{machinesCount} Reg.</p></div>
+                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100"><p className="text-[10px] uppercase font-bold text-slate-400">Materiales</p><p className="text-sm font-bold text-slate-700">{materialsCount} Reg.</p></div>
                     </div>
 
-                    {/* BLOQUE 3: HISTORIAL (LOG) */}
                     <div>
                         <h4 className="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center gap-2"><ClipboardList size={14}/> Historial de Actividad</h4>
                         <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 h-64 overflow-y-auto text-sm text-slate-700 font-mono whitespace-pre-wrap leading-relaxed shadow-inner">
@@ -137,8 +198,9 @@ const ClientHistoryModal = ({ isOpen, onClose, client }: any) => {
                     </div>
                 </div>
                 
-                <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
-                    <Button onClick={onClose} variant="secondary">Cerrar Vista</Button>
+                <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                    <Button onClick={onClose} variant="secondary">Cerrar</Button>
+                    <Button onClick={() => { onClose(); onOpenNewAction(client); }} icon={CalendarPlus}>Agendar Nueva Acción</Button>
                 </div>
             </div>
         </div>
@@ -210,23 +272,68 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
     );
 };
 
-// 4. VISTA AGENDA SEMANAL
+// 4. VISTA AGENDA SEMANAL (MODIFICADA - DRAG & DROP)
 const AgendaView = ({ contacts, setEditingContact, setView, onActionComplete }: any) => {
     const [weekOffset, setWeekOffset] = useState(0);
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedTask, setSelectedTask] = useState<any>(null);
+    const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
 
-    const handleModalAction = async (type: 'delete' | 'complete' | 'complete_new', report: string, nextActionData: any) => {
+    // Manejador del Drag Start
+    const handleDragStart = (e: React.DragEvent, taskId: string) => {
+        setDraggedTaskId(taskId);
+        // Efecto visual para móviles
+        e.dataTransfer.effectAllowed = "move"; 
+    };
+
+    // Manejador del Drag Over (Necesario para permitir el Drop)
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault(); 
+        e.dataTransfer.dropEffect = "move";
+    };
+
+    // Manejador del Drop (Soltar)
+    const handleDrop = async (e: React.DragEvent, targetDate: string) => {
+        e.preventDefault();
+        if (!draggedTaskId) return;
+
+        // Actualización optimista (UI primero)
+        const task = contacts.find((c: any) => c.id === draggedTaskId);
+        if (task && task.next_action_date !== targetDate) {
+            try {
+                const { error } = await supabase
+                    .from('industrial_contacts')
+                    .update({ next_action_date: targetDate })
+                    .eq('id', draggedTaskId);
+                
+                if (error) throw error;
+                await onActionComplete(); // Recargar datos reales
+            } catch (err: any) {
+                alert("Error al mover la tarea: " + err.message);
+            }
+        }
+        setDraggedTaskId(null);
+    };
+
+    const handleModalAction = async (type: 'delete' | 'complete' | 'complete_new' | 'reschedule', report: string, nextActionData: any) => {
         if (!selectedTask) return;
         try {
             let updates: any = {};
             const today = new Date().toISOString().split('T')[0];
             const timeNow = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-            let actionLabel = "✅ COMPLETADO"; if (type === 'delete') actionLabel = "❌ CANCELADO";
-            const logEntry = `\n[${today} ${timeNow}] ${actionLabel}: ${selectedTask.next_action}\n> Reporte: ${report}\n-------------------`;
-            const currentSummary = selectedTask.solution_summary || '';
-            if (type === 'delete' || type === 'complete') { updates = { next_action_date: null, next_action_time: null, next_action: type === 'delete' ? 'Tarea Cancelada' : 'Acción Completada (Definir siguiente)', solution_summary: currentSummary + logEntry }; } 
-            else if (type === 'complete_new') { updates = { next_action: nextActionData.action, next_action_date: nextActionData.date, next_action_time: nextActionData.time, solution_summary: currentSummary + logEntry }; }
+            
+            // Lógica de Reprogramación
+            if (type === 'reschedule') {
+                updates = { next_action_date: nextActionData.date, next_action_time: nextActionData.time };
+            } else {
+                let actionLabel = "✅ COMPLETADO"; if (type === 'delete') actionLabel = "❌ CANCELADO";
+                const logEntry = `\n[${today} ${timeNow}] ${actionLabel}: ${selectedTask.next_action}\n> Reporte: ${report}\n-------------------`;
+                const currentSummary = selectedTask.solution_summary || '';
+                
+                if (type === 'delete' || type === 'complete') { updates = { next_action_date: null, next_action_time: null, next_action: type === 'delete' ? 'Tarea Cancelada' : 'Acción Completada (Definir siguiente)', solution_summary: currentSummary + logEntry }; } 
+                else if (type === 'complete_new') { updates = { next_action: nextActionData.action, next_action_date: nextActionData.date, next_action_time: nextActionData.time, solution_summary: currentSummary + logEntry }; }
+            }
+
             const { error } = await supabase.from('industrial_contacts').update(updates).eq('id', selectedTask.id);
             if (error) throw error;
             await onActionComplete(); setModalOpen(false);
@@ -238,20 +345,90 @@ const AgendaView = ({ contacts, setEditingContact, setView, onActionComplete }: 
 
     return (
         <div className="space-y-4 animate-in fade-in pb-24 h-full flex flex-col">
-            <TaskActionModal isOpen={modalOpen} onClose={() => setModalOpen(false)} taskTitle={selectedTask?.next_action || 'Tarea'} onAction={handleModalAction} />
-            <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm shrink-0 gap-4"><h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Calendar className="text-blue-600"/> Agenda Semanal</h2><div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200"><button onClick={() => setWeekOffset(weekOffset - 1)} className="p-2 hover:bg-white rounded-md shadow-sm transition-all text-slate-600"><ArrowLeft size={18}/></button><span className="text-sm font-bold w-32 text-center text-slate-700">{weekOffset === 0 ? "Esta Semana" : weekOffset === 1 ? "Próxima" : weekOffset === -1 ? "Pasada" : `Semana ${weekOffset > 0 ? '+' : ''}${weekOffset}`}</span><button onClick={() => setWeekOffset(weekOffset + 1)} className="p-2 hover:bg-white rounded-md shadow-sm transition-all text-slate-600"><ArrowRight size={18}/></button></div></div>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 h-full overflow-y-auto">{weekDays.map((dateStr, index) => { const dayTasks = tasks.filter((c: any) => c.next_action_date === dateStr).sort((a: any, b: any) => (a.next_action_time || '00:00').localeCompare(b.next_action_time || '00:00')); const isToday = dateStr === today; return ( <div key={dateStr} className={`flex flex-col h-full min-h-[200px] rounded-xl border ${isToday ? 'border-blue-400 ring-1 ring-blue-200 bg-blue-50/20' : 'border-slate-200 bg-slate-50/30'}`}><div className={`p-3 text-center border-b ${isToday ? 'bg-blue-100/50 border-blue-200' : 'bg-slate-100/50 border-slate-200'} rounded-t-xl`}><p className={`text-xs font-bold uppercase ${isToday ? 'text-blue-700' : 'text-slate-500'}`}>{dayNames[index]}</p><p className={`text-sm font-bold ${isToday ? 'text-blue-900' : 'text-slate-700'}`}>{dateStr.split('-')[2]}/{dateStr.split('-')[1]}</p></div><div className="p-2 space-y-2 flex-1">{dayTasks.map((task: any) => { let borderColor = "border-l-blue-500"; let icon = <Phone size={12} />; const action = task.next_action?.toLowerCase() || ''; if (action.includes("visita")) { borderColor = "border-l-emerald-500"; icon = <Users size={12}/>; } if (action.includes("oferta") || action.includes("presupuesto")) { borderColor = "border-l-orange-500"; icon = <FileText size={12}/>; } return ( <div key={task.id} onClick={() => { setEditingContact(task); setView('form'); }} className={`bg-white p-3 rounded-lg border border-slate-100 border-l-4 ${borderColor} shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-95 group relative`}><div className="flex justify-between items-start mb-1"><span className="text-[10px] font-bold bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 flex items-center gap-1">{icon} {task.next_action_time?.slice(0,5)}</span><button onClick={(e) => { e.stopPropagation(); setSelectedTask(task); setModalOpen(true); }} className="text-slate-300 hover:text-emerald-600 p-1 rounded hover:bg-emerald-50 transition-colors" title="Gestionar Tarea"><CheckSquare size={16} /></button></div><p className="text-xs font-bold text-slate-800 line-clamp-1">{task.fiscal_name}</p><p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1 capitalize">{task.next_action}</p></div> ); })}{dayTasks.length === 0 && <div className="h-20 flex items-center justify-center opacity-30"><p className="text-xs text-slate-400 italic">--</p></div>}</div></div> ); })}</div>
+            <TaskActionModal isOpen={modalOpen} onClose={() => setModalOpen(false)} taskTitle={selectedTask?.next_action || 'Tarea'} currentTask={selectedTask} onAction={handleModalAction} />
+            
+            <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm shrink-0 gap-4">
+                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Calendar className="text-blue-600"/> Agenda Semanal</h2>
+                <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200"><button onClick={() => setWeekOffset(weekOffset - 1)} className="p-2 hover:bg-white rounded-md shadow-sm transition-all text-slate-600"><ArrowLeft size={18}/></button><span className="text-sm font-bold w-32 text-center text-slate-700">{weekOffset === 0 ? "Esta Semana" : weekOffset === 1 ? "Próxima" : weekOffset === -1 ? "Pasada" : `Semana ${weekOffset > 0 ? '+' : ''}${weekOffset}`}</span><button onClick={() => setWeekOffset(weekOffset + 1)} className="p-2 hover:bg-white rounded-md shadow-sm transition-all text-slate-600"><ArrowRight size={18}/></button></div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 h-full overflow-y-auto">
+                {weekDays.map((dateStr, index) => {
+                    const dayTasks = tasks.filter((c: any) => c.next_action_date === dateStr).sort((a: any, b: any) => (a.next_action_time || '00:00').localeCompare(b.next_action_time || '00:00'));
+                    const isToday = dateStr === today;
+
+                    return (
+                        <div 
+                            key={dateStr} 
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, dateStr)}
+                            className={`flex flex-col h-full min-h-[200px] rounded-xl border transition-colors ${isToday ? 'border-blue-400 ring-1 ring-blue-200 bg-blue-50/20' : 'border-slate-200 bg-slate-50/30'}`}
+                        >
+                            <div className={`p-3 text-center border-b ${isToday ? 'bg-blue-100/50 border-blue-200' : 'bg-slate-100/50 border-slate-200'} rounded-t-xl`}>
+                                <p className={`text-xs font-bold uppercase ${isToday ? 'text-blue-700' : 'text-slate-500'}`}>{dayNames[index]}</p>
+                                <p className={`text-sm font-bold ${isToday ? 'text-blue-900' : 'text-slate-700'}`}>{dateStr.split('-')[2]}/{dateStr.split('-')[1]}</p>
+                            </div>
+                            <div className="p-2 space-y-2 flex-1">
+                                {dayTasks.map((task: any) => {
+                                    let borderColor = "border-l-blue-500"; let icon = <Phone size={12} />; const action = task.next_action?.toLowerCase() || ''; if (action.includes("visita")) { borderColor = "border-l-emerald-500"; icon = <Users size={12}/>; } if (action.includes("oferta") || action.includes("presupuesto")) { borderColor = "border-l-orange-500"; icon = <FileText size={12}/>; }
+                                    
+                                    return (
+                                        <div 
+                                            key={task.id}
+                                            draggable 
+                                            onDragStart={(e) => handleDragStart(e, task.id)}
+                                            onClick={() => { setSelectedTask(task); setModalOpen(true); }}
+                                            className={`bg-white p-3 rounded-lg border border-slate-100 border-l-4 ${borderColor} shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md transition-all active:scale-95 group relative`}
+                                        >
+                                            <div className="flex justify-between items-start mb-1">
+                                                <span className="text-[10px] font-bold bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 flex items-center gap-1">{icon} {task.next_action_time?.slice(0,5)}</span>
+                                            </div>
+                                            <p className="text-xs font-bold text-slate-800 line-clamp-1">{task.fiscal_name}</p>
+                                            <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1 capitalize">{task.next_action}</p>
+                                        </div>
+                                    );
+                                })}
+                                {dayTasks.length === 0 && <div className="h-20 flex items-center justify-center opacity-30"><p className="text-xs text-slate-400 italic">--</p></div>}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 };
 
-// 5. VISTA LISTA (MODIFICADA: NUEVO BOTÓN HISTORIAL)
-const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, session, setEditingContact, setView, handleDelete }: any) => {
+// 5. VISTA LISTA
+const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, session, setEditingContact, setView, handleDelete, onOpenNewAction }: any) => {
     const [viewFilter, setViewFilter] = useState<string>('all'); 
     
-    // NUEVO: ESTADOS PARA EL MODAL DE HISTORIAL
+    // ESTADOS PARA EL MODAL DE HISTORIAL
     const [historyModalOpen, setHistoryModalOpen] = useState(false);
     const [selectedClientHistory, setSelectedClientHistory] = useState<any>(null);
+
+    // ESTADO PARA EL MODAL DE NUEVA ACCIÓN
+    const [newActionModalOpen, setNewActionModalOpen] = useState(false);
+    const [selectedClientForAction, setSelectedClientForAction] = useState<any>(null);
+
+    // Función para manejar el guardado de la nueva acción
+    const handleSaveNewAction = async (action: string, date: string, time: string) => {
+        if (!selectedClientForAction) return;
+        try {
+            const { error } = await supabase
+                .from('industrial_contacts')
+                .update({ 
+                    next_action: action, 
+                    next_action_date: date, 
+                    next_action_time: time 
+                })
+                .eq('id', selectedClientForAction.id);
+            
+            if (error) throw error;
+            setNewActionModalOpen(false);
+        } catch (err: any) {
+            alert("Error: " + err.message);
+        }
+    };
 
     let displayContacts = contacts;
     if (userRole === 'sales') { displayContacts = contacts.filter((c: any) => c.user_id === session.user.id); } 
@@ -268,6 +445,18 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
             isOpen={historyModalOpen} 
             onClose={() => setHistoryModalOpen(false)} 
             client={selectedClientHistory} 
+            onOpenNewAction={(client: any) => { 
+                setSelectedClientForAction(client); 
+                setNewActionModalOpen(true); 
+            }}
+        />
+
+        {/* MODAL DE NUEVA ACCIÓN */}
+        <NewActionModal
+            isOpen={newActionModalOpen}
+            onClose={() => setNewActionModalOpen(false)}
+            onSave={handleSaveNewAction}
+            clientName={selectedClientForAction?.fiscal_name || 'Cliente'}
         />
 
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
@@ -302,15 +491,8 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
                     </div>
                   </div>
                   <div className="flex gap-2 shrink-0 self-end md:self-start w-full md:w-auto justify-end border-t md:border-none pt-2 md:pt-0 mt-2 md:mt-0">
-                      {/* NUEVO BOTÓN HISTORIAL */}
-                      <button 
-                        onClick={() => { setSelectedClientHistory(c); setHistoryModalOpen(true); }} 
-                        className="p-2 text-slate-400 hover:text-purple-600 bg-slate-50 hover:bg-purple-50 rounded-lg flex-1 md:flex-none flex justify-center transition-colors"
-                        title="Ver Historial"
-                      >
-                        <ClipboardList size={18}/>
-                      </button>
-                      
+                      {/* BOTÓN HISTORIAL */}
+                      <button onClick={() => { setSelectedClientHistory(c); setHistoryModalOpen(true); }} className="p-2 text-slate-400 hover:text-purple-600 bg-slate-50 hover:bg-purple-50 rounded-lg flex-1 md:flex-none flex justify-center transition-colors" title="Ver Historial"><ClipboardList size={18}/></button>
                       <button onClick={() => { setEditingContact(c); setView('form'); }} className="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 rounded-lg flex-1 md:flex-none flex justify-center"><Edit size={18}/></button>
                       {(userRole === 'admin' || c.user_id === session.user.id) && (<button onClick={() => handleDelete(c.id)} className="p-2 text-slate-400 hover:text-red-600 bg-slate-50 rounded-lg flex-1 md:flex-none flex justify-center"><Trash2 size={18}/></button>)}
                   </div>
@@ -586,6 +768,10 @@ export default function App() {
                         setEditingContact={setEditingContact} 
                         setView={setView} 
                         handleDelete={handleDelete}
+                        onOpenNewAction={(client: any) => {
+                            setSelectedClientForAction(client);
+                            setNewActionModalOpen(true);
+                        }}
                     />
                 )}
 

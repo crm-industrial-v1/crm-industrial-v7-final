@@ -57,7 +57,7 @@ const inputClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text-
 const labelClass = "block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1";
 const selectClass = "w-full p-3 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm appearance-none text-sm";
 
-// --- COMPONENTE REUTILIZABLE PARA LA GUÍA CONVERSACIONAL ---
+// --- COMPONENTES AUXILIARES ---
 const ConversationGuide = ({ title, items, color = "blue" }: { title: string, items: { context: string, question: string, type?: 'pain' | 'sale' | 'info' }[], color?: string }) => {
     const colorStyles = {
         blue: { bg: "bg-blue-50", border: "border-blue-200", title: "text-blue-800", icon: "text-blue-600", bar: "border-blue-300", text: "text-blue-500" },
@@ -141,14 +141,11 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
     const [materials, setMaterials] = useState<any[]>([]);
     const [machines, setMachines] = useState<any[]>([]);
     
-    // ESTADO PARA EL NOMBRE REAL DEL COMERCIAL
     const [commercialName, setCommercialName] = useState('');
 
-    // EFECTO PARA CARGAR EL NOMBRE REAL DESDE LA BASE DE DATOS
     useEffect(() => {
         async function fetchCommercialName() {
             if (session?.user?.id) {
-                // Buscamos en la tabla profiles el campo 'full_name'
                 const { data } = await supabase
                     .from('profiles')
                     .select('full_name')
@@ -158,7 +155,6 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                 if (data && data.full_name) {
                     setCommercialName(data.full_name);
                 } else {
-                    // Fallback al email si no tiene nombre puesto
                     setCommercialName(session.user.email?.split('@')[0] || 'Comercial');
                 }
             }
@@ -170,7 +166,6 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
         if (initialData) {
             const { id, created_at, user_id, profiles, ...rest } = initialData;
             const cleanData = { ...rest };
-            // Limpieza de campos legacy
             delete cleanData.quality_rating; delete cleanData.sustainable_interest;
             delete cleanData.mac1_type; delete cleanData.mac1_brand; 
             delete cleanData.mac1_age; delete cleanData.mac1_status;
@@ -201,12 +196,10 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
         setFormData(prev => ({ ...prev, [field]: updated }));
     };
 
-    // --- GESTIÓN DE MATERIALES ---
     const addMaterial = () => setMaterials([...materials, { tempId: Date.now(), material_type: '', id_medidas: '', consumption: '', price: '', supplier: '', notes: '' }]);
     const removeMaterial = (index: number) => { const newMats = [...materials]; newMats.splice(index, 1); setMaterials(newMats); };
     const updateMaterial = (index: number, field: string, value: string) => { const newMats = [...materials]; newMats[index] = { ...newMats[index], [field]: value }; setMaterials(newMats); };
 
-    // --- GESTIÓN DE MAQUINARIA ---
     const addMachine = () => setMachines([...machines, { tempId: Date.now(), machine_type: '', custom_type: '', brand: '', model: '', age: '', status: '', maintenance_contract: 'No', substitution_potential: 'No' }]);
     const removeMachine = (index: number) => { const newMacs = [...machines]; newMacs.splice(index, 1); setMachines(newMacs); };
     const updateMachine = (index: number, field: string, value: string) => { 
@@ -218,7 +211,6 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
         setMachines(newMacs); 
     };
 
-    // --- GUARDADO ---
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setSaving(true);
@@ -240,7 +232,6 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
             }
 
             if (contactId) {
-                // Materiales
                 await supabase.from('contact_materials').delete().eq('contact_id', contactId);
                 const matsToSave = materials.filter(m => m.material_type).map(m => ({
                     contact_id: contactId,
@@ -252,7 +243,6 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                      await supabase.from('contact_materials').insert(cleanMats);
                 }
 
-                // Maquinaria
                 await supabase.from('contact_machinery').delete().eq('contact_id', contactId);
                 const macsToSave = machines.filter(m => m.machine_type).map(m => ({
                     contact_id: contactId,
@@ -270,14 +260,11 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
         }
     };
 
-    // Función auxiliar para subir el scroll al cambiar pestaña
     const scrollToTop = () => {
-        // Busca el contenedor padre que tiene el scroll (en App.tsx tiene clase overflow-y-auto)
         const scrollableContainer = topRef.current?.closest('.overflow-y-auto');
         if (scrollableContainer) {
             scrollableContainer.scrollTo({ top: 0, behavior: 'smooth' });
         } else {
-            // Fallback por si acaso
             topRef.current?.scrollIntoView({ behavior: 'smooth' });
         }
     };
@@ -285,19 +272,17 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
     const goToNextTab = () => { 
         const idx = TABS.findIndex(t => t.id === activeTab); 
         if(idx < TABS.length -1) setActiveTab(TABS[idx+1].id); 
-        scrollToTop(); // <--- Scroll arriba
+        scrollToTop(); 
     };
     
     const goToPrevTab = () => { 
         const idx = TABS.findIndex(t => t.id === activeTab); 
         if(idx > 0) setActiveTab(TABS[idx-1].id); 
-        scrollToTop(); // <--- Scroll arriba
+        scrollToTop(); 
     };
 
     return (
         <div ref={topRef} className="max-w-6xl mx-auto pb-32 w-full px-0 md:px-2">
-            
-            {/* TÍTULO */}
             <div className="hidden md:block mb-4 mt-2 px-1">
                 <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                     {initialData ? 'Editar Briefing' : 'Nuevo Briefing'}
@@ -305,7 +290,6 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                 <p className="text-xs text-slate-500">Complete la información paso a paso.</p>
             </div>
 
-            {/* TABS NAVEGACIÓN */}
             <div className="sticky top-0 z-30 py-2 bg-slate-100/95 backdrop-blur-md shadow-sm border-b border-slate-200/50 transition-all -mt-2 md:mt-0 w-full rounded-none md:rounded-xl">
                 <div className="bg-white md:rounded-xl shadow-sm border border-slate-200 p-2 overflow-x-auto no-scrollbar">
                     <div className="flex md:grid md:grid-cols-8 gap-2 min-w-max md:min-w-0"> 
@@ -359,7 +343,7 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                     </Card>
                 )}
 
-                {/* 2. NUEVA PESTAÑA: APERTURA (SCRIPT) */}
+                {/* 2. APERTURA */}
                 {activeTab === 'apertura' && (
                     <Card className="p-4 md:p-8">
                         <SectionHeader title="Apertura y Contexto" icon={MessageCircle} />
@@ -390,15 +374,14 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                     </Card>
                 )}
                 
-                {/* 3. DATOS REGISTRO (CON INTRO) */}
+                {/* 3. DATOS REGISTRO */}
                 {activeTab === 'registro' && (
                     <Card className="p-4 md:p-8">
-                        {/* Bloque Info Importancia */}
                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6 flex items-start gap-3">
                             <CheckCircle2 className="text-blue-600 mt-0.5 shrink-0" size={18} />
                             <div>
                                 <p className="text-sm font-bold text-blue-800">Validación de Datos</p>
-                                <p className="text-xs text-blue-700">Es fundamental verificar que estos datos sean correctos y estén actualizados para futuras gestiones.</p>
+                                <p className="text-xs text-blue-700">Es fundamental verificar que estos datos sean correctos y estén actualizados.</p>
                             </div>
                         </div>
 
@@ -426,8 +409,6 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                         <SectionHeader title="Perfil de Producción" icon={Factory} />
                         
                         <div className="flex flex-col lg:grid lg:grid-cols-3 gap-6">
-                            
-                            {/* GUÍA */}
                             <div className="order-1 lg:order-2 lg:col-span-1">
                                 <ConversationGuide 
                                     title="Guía Producción"
@@ -440,7 +421,6 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                                 />
                             </div>
 
-                            {/* FORMULARIO */}
                             <div className="order-2 lg:order-1 lg:col-span-2 space-y-6">
                                 <div>
                                     <label className={labelClass}>Sector / Tipo de Producto</label>
@@ -479,8 +459,6 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                         <SectionHeader title="Diagnóstico del Proceso" icon={Search} />
                         
                         <div className="flex flex-col lg:grid lg:grid-cols-3 gap-6">
-                            
-                            {/* GUÍA */}
                             <div className="order-1 lg:order-2 lg:col-span-1">
                                 <ConversationGuide 
                                     title="Detectar Dolor"
@@ -494,7 +472,6 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                                 />
                             </div>
 
-                            {/* FORMULARIO */}
                             <div className="order-2 lg:order-1 lg:col-span-2 space-y-6">
                                 <div>
                                     <label className={labelClass}>¿Cómo es el proceso actual? (Flujo)</label>
@@ -552,8 +529,6 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                         <SectionHeader title="Materiales de Consumo" icon={Package} />
                         
                         <div className="flex flex-col lg:grid lg:grid-cols-3 gap-6">
-                            
-                            {/* GUÍA */}
                             <div className="order-1 lg:order-2 lg:col-span-1">
                                 <ConversationGuide 
                                     title="Guía Materiales"
@@ -567,9 +542,7 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                                 />
                             </div>
 
-                            {/* FORMULARIO */}
                             <div className="order-2 lg:order-1 lg:col-span-2">
-                                {/* Bloque Logística añadido */}
                                 <div className="mb-6 bg-white p-4 rounded-xl border border-blue-200">
                                     <label className={labelClass}><span className="flex items-center gap-1"><Truck size={14}/> Necesidades Logísticas</span></label>
                                     <select className={selectClass} value={formData.logistics_stock} onChange={e => handleChange('logistics_stock', e.target.value)}>
@@ -627,8 +600,6 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                         <SectionHeader title="Parque de Maquinaria" icon={Wrench} />
                         
                         <div className="flex flex-col lg:grid lg:grid-cols-3 gap-6">
-                            
-                            {/* GUÍA */}
                             <div className="order-1 lg:order-2 lg:col-span-1">
                                 <ConversationGuide 
                                     title="Guía Maquinaria"
@@ -643,7 +614,6 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                                 />
                             </div>
 
-                            {/* FORMULARIO */}
                             <div className="order-2 lg:order-1 lg:col-span-2">
                                 {machines.map((mac, index) => (
                                     <div key={index} className="rounded-xl border border-slate-200 mb-6 bg-white overflow-hidden shadow-sm animate-in slide-in-from-bottom-2">
@@ -693,7 +663,7 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                             <div>
                                 <label className="block text-sm font-bold text-slate-700 mb-3">Interés real:</label>
                                 <div className="grid grid-cols-1 gap-2">
-                                    {['Visita Técnica', 'Oferta Materiales', 'Propuesta Maquinaria', 'Mantenimiento'].map(opt => (
+                                    {['Visita Técnica', 'Oferta Materiales', 'Propuesta Maquinaria', 'Mantenimiento', 'Proyecto de Ingeniería'].map(opt => (
                                         <label key={opt} className="flex items-center gap-2 p-3 bg-white rounded border border-slate-200 shadow-sm"><input type="checkbox" checked={formData.detected_interest?.includes(opt)} onChange={() => handleMultiSelect('detected_interest', opt)} className="text-red-600 rounded w-5 h-5"/> <span className="text-sm font-bold text-slate-700">{opt}</span></label>
                                     ))}
                                 </div>
