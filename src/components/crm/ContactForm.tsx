@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { 
   Search, Briefcase, Factory, Package, Calendar, 
   ArrowRight, ArrowLeft, CheckCircle2, Wrench, MessageCircle,
-  X, Plus, Truck, Settings
+  X, Plus, Truck, Settings, HelpCircle
 } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
@@ -51,12 +51,12 @@ const OPERATING_MODEL_OPTIONS = [
   "Marca (Solo gestionan, envasa otro)"
 ];
 
-// --- ORDEN DE PESTAÑAS ACTUALIZADO: Diagnóstico ANTES de Materiales ---
+// --- ORDEN DE PESTAÑAS: Diagnóstico ANTES de Materiales ---
 const TABS = [
     { id: 'sap', label: 'Identificación SAP', icon: Search },
     { id: 'registro', label: 'Datos Registro', icon: Briefcase },
     { id: 'negocio', label: 'Perfil Prod.', icon: Factory }, 
-    { id: 'necesidades', label: 'Diagnóstico', icon: Search }, // <-- AHORA VA AQUÍ
+    { id: 'necesidades', label: 'Diagnóstico', icon: Search }, 
     { id: 'materiales', label: 'Materiales', icon: Package },
     { id: 'maquinaria', label: 'Maquinaria', icon: Wrench }, 
     { id: 'cierre', label: 'Próximos pasos', icon: Calendar } 
@@ -90,7 +90,7 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
         // Perfil Producción
         sector: '', main_products: '', volume: '', packaging_mgmt: '',
         
-        // Diagnóstico (NUEVOS CAMPOS)
+        // Diagnóstico
         process_description: '', 
         bottlenecks: '', 
         production_peaks: '',
@@ -225,7 +225,7 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
     return (
         <div className="max-w-5xl mx-auto pb-32 w-full px-0 md:px-0">
             
-            {/* TÍTULO SIMPLE (Visible solo en PC) */}
+            {/* TÍTULO SIMPLE */}
             <div className="hidden md:block mb-4 mt-2 px-1">
                 <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                     {initialData ? 'Editar Briefing' : 'Nuevo Briefing'}
@@ -334,7 +334,7 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                     </Card>
                 )}
 
-                {/* 4. DIAGNÓSTICO (AHORA EN CUARTO LUGAR) */}
+                {/* 4. DIAGNÓSTICO */}
                 {activeTab === 'necesidades' && (
                     <Card className="p-4 md:p-8 border-l-4 border-l-purple-600">
                         <SectionHeader title="Diagnóstico del Proceso" icon={Search} />
@@ -350,7 +350,6 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
 
                         <div className="grid grid-cols-1 gap-6">
                             
-                            {/* 1. PROCESO ACTUAL */}
                             <div>
                                 <label className={labelClass}>¿Cómo es el proceso actual? (Flujo)</label>
                                 <textarea 
@@ -361,7 +360,6 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                                 />
                             </div>
 
-                            {/* 2. CUELLOS DE BOTELLA */}
                             <div>
                                 <label className={labelClass}>¿Dónde están los problemas / Cuellos de botella?</label>
                                 <textarea 
@@ -372,7 +370,6 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                                 />
                             </div>
 
-                            {/* 3. PICOS DE PRODUCCIÓN */}
                             <div>
                                 <label className={labelClass}>¿Tenéis picos de producción?</label>
                                 <input 
@@ -385,7 +382,6 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
 
                             <div className="border-t border-slate-200 my-2"></div>
 
-                            {/* CHECKLIST RÁPIDO */}
                             <div>
                                 <label className="block text-sm font-bold text-slate-700 mb-3">Etiquetado Rápido (Pain Points)</label>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -416,8 +412,83 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                     </Card>
                 )}
                 
-                {/* 5. MATERIALES */}
-                {activeTab === 'materiales' && (<Card className="p-4 md:p-8 bg-slate-50"><SectionHeader title="Materiales de Consumo" icon={Package} />{materials.map((mat, index) => (<div key={index} className="rounded-xl border border-slate-200 mb-6 bg-white overflow-hidden shadow-sm animate-in slide-in-from-bottom-2"><div className="p-3 border-b bg-slate-50 flex justify-between items-center"><span className="text-xs font-bold px-2 py-1 rounded bg-blue-100 text-blue-700">MATERIAL {index + 1}</span><button type="button" onClick={() => removeMaterial(index)} className="text-slate-400 hover:text-red-500 transition-colors"><X size={18}/></button></div><div className="p-4 grid grid-cols-1 gap-4"><div><label className={labelClass}>Tipo</label><select className={selectClass} value={mat.material_type} onChange={e => updateMaterial(index, 'material_type', e.target.value)}><option value="">Seleccionar...</option>{MATERIAL_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}</select></div><div><label className={labelClass}>ID / Medidas</label><input className={inputClass} value={mat.id_medidas} onChange={e => updateMaterial(index, 'id_medidas', e.target.value)} /></div><div className="grid grid-cols-2 gap-3"><div><label className={labelClass}>Consumo</label><input className={inputClass} value={mat.consumption} onChange={e => updateMaterial(index, 'consumption', e.target.value)} /></div><div><label className={labelClass}>Precio</label><input className={inputClass} value={mat.price} onChange={e => updateMaterial(index, 'price', e.target.value)} /></div></div><div><label className={labelClass}>Proveedor</label><input className={inputClass} value={mat.supplier} onChange={e => updateMaterial(index, 'supplier', e.target.value)} /></div><div><label className={labelClass}>Notas</label><input className={inputClass} value={mat.notes} onChange={e => updateMaterial(index, 'notes', e.target.value)} /></div></div></div>))}<button type="button" onClick={addMaterial} className="w-full py-4 border-2 border-dashed border-blue-300 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"><Plus size={20} /> Añadir Otra Material</button><div className="flex gap-3 mt-8 pt-4 border-t"><Button onClick={goToPrevTab} icon={ArrowLeft} variant="ghost" className="flex-1">Anterior</Button><Button onClick={goToNextTab} icon={ArrowRight} variant="secondary" className="flex-1">Siguiente</Button></div></Card>)}
+                {/* 5. MATERIALES (CON GUÍA ACTUALIZADA) */}
+                {activeTab === 'materiales' && (
+                    <Card className="p-4 md:p-8 bg-slate-50">
+                        <SectionHeader title="Materiales de Consumo" icon={Package} />
+                        
+                        {/* --- GUÍA CONVERSACIONAL INTEGRADA --- */}
+                        <div className="mb-6 bg-white p-4 rounded-xl border border-blue-200 shadow-sm">
+                            <h4 className="text-sm font-bold text-blue-800 flex items-center gap-2 mb-3">
+                                <HelpCircle size={16}/> Preguntas para no parecer un "interrogatorio":
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-600">
+                                <div className="p-2 bg-blue-50 rounded border border-blue-100">
+                                    <strong className="block text-blue-700 mb-1">Para el TIPO (Verificar):</strong>
+                                    "Para ver si hay compatibilidad 100% con tu máquina... ¿me dejas ver una etiqueta de la caja?"
+                                </div>
+                                <div className="p-2 bg-blue-50 rounded border border-blue-100">
+                                    <strong className="block text-blue-700 mb-1">Para el CONSUMO (Logística):</strong>
+                                    "¿Cómo pedís esto? ¿Os traen palets sueltos o camiones completos?"
+                                </div>
+                                <div className="p-2 bg-blue-50 rounded border border-blue-100">
+                                    <strong className="block text-blue-700 mb-1">Para detectar DOLOR (Calidad):</strong>
+                                    "¿Os da mucha guerra el material actual? ¿Tenéis roturas o paradas?"
+                                </div>
+                                <div className="p-2 bg-blue-50 rounded border border-blue-100">
+                                    <strong className="block text-blue-700 mb-1">Para el SUMINISTRO:</strong>
+                                    "¿Os cumplen bien los plazos de entrega o sufrís para recibir material?"
+                                </div>
+                                <div className="p-2 bg-blue-50 rounded border border-blue-100 col-span-1 md:col-span-2">
+                                    <strong className="block text-blue-700 mb-1">Para el FUTURO (Sostenibilidad/Ahorro):</strong>
+                                    "¿Qué urge más ahora: reducir coste anual o reducir plástico (sostenibilidad)?"
+                                </div>
+                            </div>
+                        </div>
+
+                        {materials.map((mat, index) => (
+                            <div key={index} className="rounded-xl border border-slate-200 mb-6 bg-white overflow-hidden shadow-sm animate-in slide-in-from-bottom-2">
+                                <div className="p-3 border-b bg-slate-50 flex justify-between items-center">
+                                    <span className="text-xs font-bold px-2 py-1 rounded bg-blue-100 text-blue-700">MATERIAL {index + 1}</span>
+                                    <button type="button" onClick={() => removeMaterial(index)} className="text-slate-400 hover:text-red-500 transition-colors"><X size={18}/></button>
+                                </div>
+                                <div className="p-4 grid grid-cols-1 gap-4">
+                                    <div>
+                                        <label className={labelClass}>Tipo</label>
+                                        <select className={selectClass} value={mat.material_type} onChange={e => updateMaterial(index, 'material_type', e.target.value)}>
+                                            <option value="">Seleccionar...</option>
+                                            {MATERIAL_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className={labelClass}>ID / Medidas (Ver etiqueta)</label>
+                                        <input className={inputClass} value={mat.id_medidas} onChange={e => updateMaterial(index, 'id_medidas', e.target.value)} placeholder="Ej: 500mm x 23mic" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className={labelClass}>Consumo (Pallets/Mes)</label>
+                                            <input className={inputClass} value={mat.consumption} onChange={e => updateMaterial(index, 'consumption', e.target.value)} />
+                                        </div>
+                                        <div>
+                                            <label className={labelClass}>Precio Actual</label>
+                                            <input className={inputClass} value={mat.price} onChange={e => updateMaterial(index, 'price', e.target.value)} />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className={labelClass}>Proveedor Actual (¿Falla en servicio?)</label>
+                                        <input className={inputClass} value={mat.supplier} onChange={e => updateMaterial(index, 'supplier', e.target.value)} />
+                                    </div>
+                                    <div>
+                                        <label className={labelClass}>Notas (Incidencias / Calidad)</label>
+                                        <input className={inputClass} value={mat.notes} onChange={e => updateMaterial(index, 'notes', e.target.value)} placeholder="Roturas, problemas, sostenibilidad..." />
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                        <button type="button" onClick={addMaterial} className="w-full py-4 border-2 border-dashed border-blue-300 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"><Plus size={20} /> Añadir Otro Material</button>
+                        <div className="flex gap-3 mt-8 pt-4 border-t"><Button onClick={goToPrevTab} icon={ArrowLeft} variant="ghost" className="flex-1">Anterior</Button><Button onClick={goToNextTab} icon={ArrowRight} variant="secondary" className="flex-1">Siguiente</Button></div>
+                    </Card>
+                )}
                 
                 {/* 6. MAQUINARIA */}
                 {activeTab === 'maquinaria' && (
