@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { 
   Search, Briefcase, Factory, Package, Calendar, 
   ArrowRight, ArrowLeft, CheckCircle2, Wrench, MessageCircle,
-  X, Plus, Truck, Settings
+  X, Plus, Truck, Settings, Info, Clock
 } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
@@ -42,7 +42,8 @@ const OPERATING_MODEL_OPTIONS = [
 ];
 
 const TABS = [
-    { id: 'sap', label: 'Identificación SAP', icon: Search },
+    { id: 'sap', label: 'SAP', icon: Search },
+    { id: 'apertura', label: 'Apertura', icon: MessageCircle }, 
     { id: 'registro', label: 'Datos Registro', icon: Briefcase },
     { id: 'negocio', label: 'Perfil Prod.', icon: Factory }, 
     { id: 'necesidades', label: 'Diagnóstico', icon: Search }, 
@@ -119,7 +120,7 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
         bottlenecks: '', 
         production_peaks: '',
 
-        // NUEVO: Variables del guion original
+        // Variables del guion original
         decision_driver: 'Precio', 
         logistics_stock: '', 
         decision_maker: '', 
@@ -132,11 +133,35 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
         next_action: 'Llamada de seguimiento', 
         next_action_date: '', 
         next_action_time: '09:00'
-        // responsible eliminado
     });
 
     const [materials, setMaterials] = useState<any[]>([]);
     const [machines, setMachines] = useState<any[]>([]);
+    
+    // ESTADO PARA EL NOMBRE REAL DEL COMERCIAL
+    const [commercialName, setCommercialName] = useState('');
+
+    // EFECTO PARA CARGAR EL NOMBRE REAL DESDE LA BASE DE DATOS
+    useEffect(() => {
+        async function fetchCommercialName() {
+            if (session?.user?.id) {
+                // Buscamos en la tabla profiles el campo 'full_name'
+                const { data } = await supabase
+                    .from('profiles')
+                    .select('full_name')
+                    .eq('id', session.user.id)
+                    .single();
+                
+                if (data && data.full_name) {
+                    setCommercialName(data.full_name);
+                } else {
+                    // Fallback al email si no tiene nombre puesto
+                    setCommercialName(session.user.email?.split('@')[0] || 'Comercial');
+                }
+            }
+        }
+        fetchCommercialName();
+    }, [session]);
 
     useEffect(() => {
         if (initialData) {
@@ -259,7 +284,7 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
             {/* TABS NAVEGACIÓN */}
             <div className="sticky top-0 z-50 py-2 bg-slate-100/95 backdrop-blur-md shadow-sm border-b border-slate-200/50 transition-all -mt-2 md:mt-0 w-full rounded-none md:rounded-xl">
                 <div className="bg-white md:rounded-xl shadow-sm border border-slate-200 p-2 overflow-x-auto no-scrollbar">
-                    <div className="flex md:grid md:grid-cols-7 gap-2 min-w-max md:min-w-0"> 
+                    <div className="flex md:grid md:grid-cols-8 gap-2 min-w-max md:min-w-0"> 
                         {TABS.map(tab => (
                             <button key={tab.id} onClick={() => setActiveTab(tab.id)} 
                                 className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all text-[10px] md:text-sm gap-1 border ${activeTab === tab.id ? 'bg-blue-50 border-blue-200 text-blue-700 font-bold shadow-sm' : 'bg-white border-transparent text-slate-500 hover:bg-slate-50'} w-24 md:w-full`}
@@ -274,13 +299,88 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
 
             <form onSubmit={handleSubmit} className="space-y-6 w-full px-0.5 mt-4 md:mt-0">
                 
-                {/* 1. SAP */}
-                {activeTab === 'sap' && (<Card className="p-4 md:p-8"><SectionHeader title="Identificación SAP" icon={Search} /><div className="grid grid-cols-1 gap-4"><div><label className={labelClass}>Estado</label><select className={selectClass} value={formData.sap_status} onChange={e => handleChange('sap_status', e.target.value)}><option>Nuevo Prospecto</option><option>Lead SAP</option><option>Cliente SAP</option></select></div><div><label className={labelClass}>Código SAP</label><input className={inputClass} placeholder="Ej: C000450" value={formData.sap_id} onChange={e => handleChange('sap_id', e.target.value)} /></div></div><div className="flex justify-end mt-6 pt-4 border-t"><Button onClick={goToNextTab} icon={ArrowRight} variant="secondary">Siguiente</Button></div></Card>)}
+                {/* 1. SAP (MODIFICADO) */}
+                {activeTab === 'sap' && (
+                    <Card className="p-4 md:p-8">
+                        {/* Alerta indicativa */}
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 flex items-start gap-3">
+                            <Info className="text-yellow-600 mt-0.5 shrink-0" size={20} />
+                            <div>
+                                <p className="text-sm font-bold text-yellow-800">Uso Interno Comercial</p>
+                                <p className="text-xs text-yellow-700 mt-1">
+                                    Por favor, rellena estos datos <strong>antes</strong> de iniciar la visita o llamada con el cliente.
+                                </p>
+                            </div>
+                        </div>
+
+                        <SectionHeader title="SAP" icon={Search} />
+                        <div className="grid grid-cols-1 gap-4">
+                            <div>
+                                <label className={labelClass}>Tipo de IC</label>
+                                <select className={selectClass} value={formData.sap_status} onChange={e => handleChange('sap_status', e.target.value)}>
+                                    <option>Nuevo Prospecto</option>
+                                    <option>Lead SAP</option>
+                                    <option>Cliente SAP</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className={labelClass}>Código SAP</label>
+                                <input className={inputClass} placeholder="Ej: C000450" value={formData.sap_id} onChange={e => handleChange('sap_id', e.target.value)} />
+                            </div>
+                        </div>
+                        {/* Botón pequeño y diferenciado */}
+                        <div className="flex justify-end mt-6 pt-4 border-t">
+                            <Button onClick={goToNextTab} icon={ArrowRight} className="w-auto px-6 py-2 text-sm bg-slate-700 hover:bg-slate-800 border-none shadow-sm">
+                                Siguiente
+                            </Button>
+                        </div>
+                    </Card>
+                )}
+
+                {/* 2. NUEVA PESTAÑA: APERTURA (SCRIPT) */}
+                {activeTab === 'apertura' && (
+                    <Card className="p-4 md:p-8">
+                        <SectionHeader title="Apertura y Contexto" icon={MessageCircle} />
+                        
+                        <div className="bg-blue-50 border-l-4 border-blue-600 p-6 rounded-r-lg shadow-sm mb-6">
+                            <div className="flex items-center gap-2 mb-4 text-blue-800 font-bold uppercase text-xs tracking-wider">
+                                <Clock size={14}/> Duración estimada: 2-3 minutos
+                            </div>
+                            
+                            <div className="space-y-4 text-slate-800 text-base leading-relaxed">
+                                <p>
+                                    "Buenos días, ¿qué tal?<br/>
+                                    Soy <span className="font-bold text-blue-700 bg-white px-2 py-0.5 rounded border border-blue-200">{commercialName}</span> de <span className="font-bold">MME</span>."
+                                </p>
+                                <p>
+                                    "Estamos ayudando a empresas como la vuestra a <strong>optimizar costes de embalaje, renovar maquinaria y evitar paradas en producción</strong>."
+                                </p>
+                                <p className="italic font-semibold text-blue-900 border-t border-blue-200 pt-4 mt-4">
+                                    "Para orientarme un poco mejor, ¿te puedo hacer unas breves preguntas sobre vuestro proceso actual?"
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 mt-6 pt-4 border-t">
+                            <Button onClick={goToPrevTab} icon={ArrowLeft} variant="ghost" className="flex-1">Anterior</Button>
+                            <Button onClick={goToNextTab} icon={ArrowRight} variant="secondary" className="flex-1 font-bold text-blue-700 border border-blue-200 bg-blue-50 hover:bg-blue-100">Comenzar Preguntas</Button>
+                        </div>
+                    </Card>
+                )}
                 
-                {/* 2. DATOS REGISTRO (MODIFICADO) */}
+                {/* 3. DATOS REGISTRO (CON INTRO) */}
                 {activeTab === 'registro' && (
                     <Card className="p-4 md:p-8">
-                        <SectionHeader title="Datos" icon={Briefcase} />
+                        {/* Bloque Info Importancia */}
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6 flex items-start gap-3">
+                            <CheckCircle2 className="text-blue-600 mt-0.5 shrink-0" size={18} />
+                            <div>
+                                <p className="text-sm font-bold text-blue-800">Validación de Datos</p>
+                                <p className="text-xs text-blue-700">Es fundamental verificar que estos datos sean correctos y estén actualizados para futuras gestiones.</p>
+                            </div>
+                        </div>
+
+                        <SectionHeader title="Datos Registro" icon={Briefcase} />
                         <div className="grid grid-cols-1 gap-4">
                             <div><label className={labelClass}>Nombre Jurídico *</label><input required className={inputClass} value={formData.fiscal_name} onChange={e => handleChange('fiscal_name', e.target.value)} /></div>
                             <div><label className={labelClass}>CIF/NIF *</label><input required className={inputClass} value={formData.cif} onChange={e => handleChange('cif', e.target.value)} /></div>
@@ -298,7 +398,7 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                     </Card>
                 )}
 
-                {/* 3. PERFIL PRODUCCIÓN */}
+                {/* 4. PERFIL PRODUCCIÓN */}
                 {activeTab === 'negocio' && (
                     <Card className="p-4 md:p-8">
                         <SectionHeader title="Perfil de Producción" icon={Factory} />
@@ -351,7 +451,7 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                     </Card>
                 )}
 
-                {/* 4. DIAGNÓSTICO */}
+                {/* 5. DIAGNÓSTICO */}
                 {activeTab === 'necesidades' && (
                     <Card className="p-4 md:p-8 border-l-4 border-l-purple-600">
                         <SectionHeader title="Diagnóstico del Proceso" icon={Search} />
@@ -424,7 +524,7 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                     </Card>
                 )}
                 
-                {/* 5. MATERIALES */}
+                {/* 6. MATERIALES */}
                 {activeTab === 'materiales' && (
                     <Card className="p-4 md:p-8 bg-slate-50">
                         <SectionHeader title="Materiales de Consumo" icon={Package} />
@@ -499,7 +599,7 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                     </Card>
                 )}
                 
-                {/* 6. MAQUINARIA (MODIFICADO) */}
+                {/* 7. MAQUINARIA */}
                 {activeTab === 'maquinaria' && (
                     <Card className="p-4 md:p-8 bg-slate-50">
                         <SectionHeader title="Parque de Maquinaria" icon={Wrench} />
@@ -563,7 +663,7 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                     </Card>
                 )}
                 
-                {/* 7. CIERRE (MODIFICADO) */}
+                {/* 8. CIERRE */}
                 {activeTab === 'cierre' && (
                     <Card className="p-4 md:p-8 border-l-4 border-l-red-500 bg-red-50/10">
                         <SectionHeader title="Próximos pasos" icon={Calendar} />
