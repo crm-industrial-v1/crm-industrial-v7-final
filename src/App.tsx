@@ -17,7 +17,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V10.11 - Final Stable"; 
+const APP_VERSION = "V10.2 - Errores Vercel"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
 const SUPER_ADMIN_EMAIL = "jesusblanco@mmesl.com";
@@ -370,7 +370,10 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
                   </div>
                   <div className="flex gap-2 shrink-0 self-end md:self-start w-full md:w-auto justify-end border-t md:border-none pt-2 md:pt-0 mt-2 md:mt-0">
                       <button onClick={() => { setSelectedClientHistory(c); setHistoryModalOpen(true); }} className="p-2 text-slate-400 hover:text-purple-600 bg-slate-50 hover:bg-purple-50 rounded-lg flex-1 md:flex-none flex justify-center transition-colors" title="Ver Historial"><ClipboardList size={18}/></button>
-                      <button onClick={() => onOpenNewAction(c)} className="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 rounded-lg flex-1 md:flex-none flex justify-center"><CalendarPlus size={18}/></button>
+                      
+                      {/* --- CORRECCIÓN AQUÍ: USAMOS EL ESTADO LOCAL --- */}
+                      <button onClick={() => { setSelectedClientForAction(c); setNewActionModalOpen(true); }} className="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 rounded-lg flex-1 md:flex-none flex justify-center"><CalendarPlus size={18}/></button>
+                      
                       <button onClick={() => { setEditingContact(c); setView('form'); }} className="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 rounded-lg flex-1 md:flex-none flex justify-center"><Edit size={18}/></button>
                       {(userRole === 'admin' || c.user_id === session.user.id) && (<button onClick={() => handleDelete(c.id)} className="p-2 text-slate-400 hover:text-red-600 bg-slate-50 rounded-lg flex-1 md:flex-none flex justify-center"><Trash2 size={18}/></button>)}
                   </div>
@@ -515,10 +518,6 @@ export default function App() {
                         setEditingContact={setEditingContact} 
                         setView={setView} 
                         handleDelete={handleDelete}
-                        onOpenNewAction={(client: any) => {
-                            setSelectedClientForAction(client);
-                            setNewActionModalOpen(true);
-                        }}
                     />
                 )}
 
