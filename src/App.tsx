@@ -18,7 +18,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V10.26 - Final Clean (No Errors)"; 
+const APP_VERSION = "V10.28 - Final Clean (Unused Imports Removed)"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
 const SUPER_ADMIN_EMAIL = "jesusblanco@mmesl.com";
@@ -526,7 +526,7 @@ const AgendaView = ({ contacts, onActionComplete }: any) => {
 };
 
 // 5. VISTA LISTA
-// CORRECCIÓN: Optimización de anchura para móvil
+// CORRECCIÓN: Optimización de anchura para móvil y búsqueda
 const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, session, setEditingContact, setView, handleDelete }: any) => {
     const [viewFilter, setViewFilter] = useState<string>('all'); 
     const [historyModalOpen, setHistoryModalOpen] = useState(false);
@@ -543,6 +543,7 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
     if (userRole === 'sales') { displayContacts = contacts.filter((c: any) => c.user_id === session.user.id); } 
     else { if (viewFilter === 'mine') { displayContacts = contacts.filter((c: any) => c.user_id === session.user.id); } else if (viewFilter !== 'all') { displayContacts = contacts.filter((c: any) => c.user_id === viewFilter); } }
     
+    // CORRECCIÓN BÚSQUEDA: Añadido filtro por persona de contacto
     const filtered = displayContacts.filter((c: any) => c.fiscal_name?.toLowerCase().includes(searchTerm.toLowerCase()) || c.contact_person?.toLowerCase().includes(searchTerm.toLowerCase()));
     const uniqueSalesUsers = Array.from(new Set(contacts.map((c: any) => c.user_id))).map(id => { const contact = contacts.find((c: any) => c.user_id === id); const name = contact?.profiles?.full_name || contact?.profiles?.email || 'Desconocido'; return { id, label: name }; }).filter(u => u.label !== 'Desconocido');
 
@@ -555,13 +556,13 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
                <div><h2 className="text-xl font-bold text-slate-800">Base de Datos</h2><p className="text-xs text-slate-500">{userRole === 'sales' ? 'Mis Fichas' : `Mostrando: ${viewFilter === 'all' ? 'Todos' : viewFilter === 'mine' ? 'Mis Fichas' : 'Filtro Usuario'}`}</p></div>
                {(userRole === 'manager' || userRole === 'admin') && (<div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200 w-full md:w-auto overflow-x-auto no-scrollbar"><button onClick={() => setViewFilter('all')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors whitespace-nowrap ${viewFilter === 'all' ? 'bg-white text-blue-600 shadow-sm border' : 'text-slate-500 hover:text-slate-700'}`}>Todos</button><button onClick={() => setViewFilter('mine')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors whitespace-nowrap ${viewFilter === 'mine' ? 'bg-white text-blue-600 shadow-sm border' : 'text-slate-500 hover:text-slate-700'}`}>Míos</button><div className="h-4 w-px bg-slate-300 mx-1"></div><select value={viewFilter !== 'all' && viewFilter !== 'mine' ? viewFilter : ''} onChange={(e) => setViewFilter(e.target.value || 'all')} className="bg-transparent text-xs font-bold text-slate-600 outline-none min-w-[120px]"><option value="">Filtrar por usuario...</option>{uniqueSalesUsers.map((u: any) => (<option key={u.id} value={u.id}>{u.label}</option>))}</select></div>)}
            </div>
-           <div className="relative w-full"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} /><input type="text" placeholder="Buscar empresa o contacto..." className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+           {/* CORRECCIÓN ESTILO INPUT: Añadido bg-white y text-slate-900 */}
+           <div className="relative w-full"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} /><input type="text" placeholder="Buscar empresa o contacto..." className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white text-slate-900" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
         </div>
         {loading ? <div className="text-center p-20"><Loader2 className="animate-spin mx-auto text-blue-600 mb-4" size={32}/><p className="text-slate-500">Cargando...</p></div> : (
           <div className="grid gap-3 w-full">
             {filtered.length === 0 && <div className="text-center py-10 text-slate-400">No se encontraron resultados.</div>}
             {filtered.map((c: any) => (
-              // CORRECCIÓN: 'max-w-full' y 'overflow-hidden' para evitar desbordamiento
               <Card key={c.id} className="p-3 md:p-4 hover:shadow-lg transition-all border border-slate-200 w-full max-w-full overflow-hidden">
                 <div className="flex flex-col md:flex-row justify-between items-start gap-3 w-full">
                   <div className="flex-1 min-w-0 w-full">
@@ -574,7 +575,6 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
                     </div>
                     <div className="flex flex-col gap-1 text-sm text-slate-600"><span className="flex items-center gap-2 truncate"><Users size={14} className="text-slate-400 shrink-0"/> {c.contact_person || 'Sin contacto'}</span><span className="flex items-center gap-2 truncate"><Briefcase size={14} className="text-slate-400 shrink-0"/> <span className="text-slate-500 text-xs">Titular:</span> {c.profiles?.full_name || c.profiles?.email || 'N/A'}</span></div>
                   </div>
-                  {/* CORRECCIÓN: Botones en GRID con gap pequeño para que quepan en móvil */}
                   <div className={`grid ${userRole === 'admin' || c.user_id === session.user.id ? 'grid-cols-4' : 'grid-cols-3'} gap-1 w-full md:w-auto md:flex md:gap-2 shrink-0 self-end md:self-start justify-end border-t md:border-none pt-2 md:pt-0 mt-2 md:mt-0`}>
                       <button onClick={() => { setSelectedClientHistory(c); setHistoryModalOpen(true); }} className="p-1.5 md:p-2 text-slate-400 hover:text-purple-600 bg-slate-50 hover:bg-purple-50 rounded-lg flex justify-center transition-colors" title="Ver Historial"><ClipboardList size={18}/></button>
                       <button onClick={() => { setSelectedClientForAction(c); setNewActionModalOpen(true); }} className="p-1.5 md:p-2 text-slate-400 hover:text-blue-600 bg-slate-50 rounded-lg flex justify-center"><CalendarPlus size={18}/></button>
