@@ -17,7 +17,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V10.15 - Mobile Spacing Fix"; 
+const APP_VERSION = "V10.17 - Force Mobile Gap Fix"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
 const SUPER_ADMIN_EMAIL = "jesusblanco@mmesl.com";
@@ -591,9 +591,7 @@ export default function App() {
              <span className="font-bold text-slate-800">Briefing Colaborativo</span><div className="w-8"></div>
           </header>
           
-          {/* AQUÍ ESTÁ EL CAMBIO: 'px-2 pt-0' para reducir espacio en móvil */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 pt-0 md:p-8 w-full scroll-smooth bg-slate-50">
-            {/* También reducimos el padding aquí: 'px-1 pt-0' */}
             <div className="px-1 pt-0 md:p-0 pb-20 w-full"> 
                 {view === 'dashboard' && <DashboardView contacts={contacts} userRole={userRole} userProfile={userProfile} session={session} setEditingContact={setEditingContact} setView={setView} />}
                 
@@ -617,12 +615,15 @@ export default function App() {
             </div>
             
             {view === 'form' && (
-                <ContactForm 
-                    session={session}
-                    initialData={editingContact}
-                    onCancel={() => setView('list')}
-                    onSuccess={() => { fetchContacts(); setView('list'); }}
-                />
+                // AQUÍ ESTÁ EL CAMBIO: Forzamos margen negativo en móvil para eliminar el hueco visual
+                <div className="-mt-6 md:mt-0">
+                    <ContactForm 
+                        session={session}
+                        initialData={editingContact}
+                        onCancel={() => setView('list')}
+                        onSuccess={() => { fetchContacts(); setView('list'); }}
+                    />
+                </div>
             )}
           </div>
        </main>
