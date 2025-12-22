@@ -18,7 +18,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V10.31 - Contact"; 
+const APP_VERSION = "V10.32 - Edit Actions Sync"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
 const SUPER_ADMIN_EMAIL = "jesusblanco@mmesl.com";
@@ -74,10 +74,17 @@ const NewActionModal = ({ isOpen, onClose, onSave, clientName }: any) => {
     );
 };
 
-// 0.2. MODAL DE GESTIÓN DE TAREA (AGENDA)
+// 0.2. MODAL DE GESTIÓN DE TAREA (AGENDA) - ACTUALIZADO V10.32
 const TaskActionModal = ({ isOpen, onClose, onAction, taskTitle, currentTask }: any) => {
     const [step, setStep] = useState(1);
     const [report, setReport] = useState('');
+    const [deleteReason, setDeleteReason] = useState('');
+    
+    // ESTADOS PARA LA EDICIÓN (MATCHING BRIEFING)
+    const [editType, setEditType] = useState('Llamada');
+    const [editDetails, setEditDetails] = useState('');
+
+    // Estados para reprogramar/nueva acción
     const [newActionType, setNewActionType] = useState('Llamada de Seguimiento');
     const [newDate, setNewDate] = useState('');
     const [newTime, setNewTime] = useState('09:00');
@@ -86,37 +93,75 @@ const TaskActionModal = ({ isOpen, onClose, onAction, taskTitle, currentTask }: 
         if (isOpen) { 
             setStep(1); 
             setReport(''); 
+            setDeleteReason('');
+            
+            // Lógica para detectar tipo actual y rellenar edición
+            const currentTitle = taskTitle || '';
+            let detectedType = 'Llamada';
+            if (currentTitle.toLowerCase().includes('visita')) detectedType = 'Visita';
+            else if (currentTitle.toLowerCase().includes('oferta')) detectedType = 'Oferta';
+            else if (currentTitle.toLowerCase().includes('cierre')) detectedType = 'Cierre';
+            
+            setEditType(detectedType);
+            // Intentamos limpiar el título para dejar solo el detalle si existe
+            setEditDetails(currentTitle.replace(detectedType, '').replace(/\[|\]/g, '').trim());
+
             if(currentTask) {
                 setNewDate(currentTask.next_action_date || '');
                 setNewTime(currentTask.next_action_time || '09:00');
             }
         } 
-    }, [isOpen, currentTask]);
+    }, [isOpen, currentTask, taskTitle]);
 
     if (!isOpen) return null;
 
     const isReportValid = report.trim().length > 5;
+    const isDeleteReasonValid = deleteReason.trim().length > 5;
+
+    // Función para construir el string final de edición
+    const handleSaveEdit = () => {
+        const finalString = editDetails ? `${editType} [${editDetails}]` : editType;
+        onAction('edit', '', { action: finalString });
+    };
 
     return (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
                 <div className="bg-slate-50 p-4 border-b border-slate-100 flex justify-between items-center">
                     <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                        {step === 3 ? <Calendar className="text-blue-600" size={18}/> : <CheckSquare className="text-blue-600" size={18}/>} 
-                        {step === 3 ? 'Reprogramar Tarea' : 'Gestionar Tarea'}
+                        {step === 3 ? <Calendar className="text-blue-600" size={18}/> : 
+                         step === 5 ? <Edit className="text-orange-600" size={18}/> :
+                         step === 6 ? <Trash2 className="text-red-600" size={18}/> :
+                         <CheckSquare className="text-emerald-600" size={18}/>} 
+                        
+                        {step === 1 && 'Gestionar Tarea'}
+                        {step === 2 && 'Finalizar Tarea'}
+                        {step === 3 && 'Reprogramar'}
+                        {step === 4 && 'Nueva Acción'}
+                        {step === 5 && 'Editar Tarea'}
+                        {step === 6 && 'Eliminar Tarea'}
                     </h3>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
                 </div>
+
+                {/* --- MENU PRINCIPAL (PASO 1) --- */}
                 {step === 1 && (
                     <div className="p-5 space-y-4">
                         <div><p className="text-xs font-bold text-slate-500 uppercase mb-1">Tarea Actual</p><p className="text-sm font-medium text-slate-800 bg-blue-50 p-2 rounded border border-blue-100 text-blue-900">{taskTitle}</p></div>
                         <div className="flex flex-col gap-3">
                             <button onClick={() => setStep(2)} className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all"><CheckCircle2 size={18}/> Marcar como Realizada / Finalizar</button>
-                            <button onClick={() => setStep(3)} className="w-full py-3 bg-white border-2 border-blue-100 hover:border-blue-300 text-blue-700 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all"><ArrowRight size={18}/> Cambiar Fecha (Reprogramar)</button>
-                            <button onClick={() => onAction('delete', '', null)} className="w-full py-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg text-xs font-bold transition-all">Eliminar Tarea (Error)</button>
+                            
+                            <div className="grid grid-cols-2 gap-3">
+                                <button onClick={() => setStep(3)} className="w-full py-3 bg-white border border-slate-200 hover:bg-blue-50 text-slate-700 rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-all"><Calendar size={16}/> Cambiar Fecha</button>
+                                <button onClick={() => setStep(5)} className="w-full py-3 bg-white border border-slate-200 hover:bg-orange-50 text-slate-700 rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-all"><Edit size={16}/> Editar Tarea</button>
+                            </div>
+
+                            <button onClick={() => setStep(6)} className="w-full py-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg text-xs font-bold transition-all mt-2">Eliminar Tarea (Error)</button>
                         </div>
                     </div>
                 )}
+
+                {/* --- PASO 2: FINALIZAR (REPORTE) --- */}
                 {step === 2 && (
                     <div className="p-5 space-y-4 animate-in slide-in-from-right-4 duration-300">
                         <div className="bg-emerald-50 p-3 rounded text-xs text-emerald-800 mb-2 border border-emerald-100 flex items-center gap-2"><CheckCircle2 size={14}/> Estás cerrando esta tarea.</div>
@@ -132,6 +177,8 @@ const TaskActionModal = ({ isOpen, onClose, onAction, taskTitle, currentTask }: 
                         <button onClick={() => { if(!isReportValid) return; setStep(4); }} disabled={!isReportValid} className="w-full py-2 text-blue-600 font-bold text-xs hover:bg-blue-50 rounded mt-1 disabled:opacity-50">¿Quieres Agendar la Siguiente ya?</button>
                     </div>
                 )}
+
+                {/* --- PASO 3: REPROGRAMAR (CAMBIAR FECHA) --- */}
                 {step === 3 && (
                     <div className="p-5 space-y-4 animate-in slide-in-from-right-4 duration-300">
                         <div className="bg-blue-50 p-3 rounded text-xs text-blue-800 mb-2 border border-blue-100">Cambia la fecha de esta tarea sin cerrarla.</div>
@@ -142,12 +189,57 @@ const TaskActionModal = ({ isOpen, onClose, onAction, taskTitle, currentTask }: 
                         </div>
                     </div>
                 )}
+
+                {/* --- PASO 4: NUEVA ACCIÓN (DESPUÉS DE FINALIZAR) --- */}
                 {step === 4 && (
                     <div className="p-5 space-y-4 animate-in slide-in-from-right-4 duration-300">
                         <div className="bg-slate-100 p-2 rounded text-xs text-slate-500 mb-2">Reporte guardado. Define la siguiente acción.</div>
                         <div><label className={labelClass}>Próxima Acción</label><select className={selectClass} value={newActionType} onChange={e => setNewActionType(e.target.value)}><option>Llamada de Seguimiento</option><option>Visita Técnica</option><option>Visita de Cierre</option><option>Enviar Presupuesto</option></select></div>
                         <div className="grid grid-cols-2 gap-3"><div><label className={labelClass}>Fecha</label><input type="date" className={inputClass} value={newDate} onChange={e => setNewDate(e.target.value)} required /></div><div><label className={labelClass}>Hora</label><input type="time" className={inputClass} value={newTime} onChange={e => setNewTime(e.target.value)} required /></div></div>
                         <div className="flex gap-2 pt-4"><button onClick={() => setStep(2)} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg font-bold text-sm">Atrás</button><button onClick={() => onAction('complete_new', report, { action: newActionType, date: newDate, time: newTime })} className="flex-[2] py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-sm shadow-lg">Confirmar Agenda</button></div>
+                    </div>
+                )}
+
+                {/* --- PASO 5: EDITAR TAREA (CORREGIDO: MISMA LÓGICA BRIEFING) --- */}
+                {step === 5 && (
+                    <div className="p-5 space-y-4 animate-in slide-in-from-right-4 duration-300">
+                        <div className="bg-orange-50 p-3 rounded text-xs text-orange-800 mb-2 border border-orange-100">Modifica el concepto de la tarea actual.</div>
+                        
+                        <div>
+                            <label className={labelClass}>ACCIÓN</label>
+                            <select className={selectClass} value={editType} onChange={e => setEditType(e.target.value)}>
+                                <option>Llamada</option>
+                                <option>Visita</option>
+                                <option>Oferta</option>
+                                <option>Cierre</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className={labelClass}>Detalle / Objetivo (Opcional)</label>
+                            <input type="text" className={inputClass} value={editDetails} onChange={(e) => setEditDetails(e.target.value)} placeholder="Ej: Obj: Visita Técnica" />
+                        </div>
+
+                        <div className="flex gap-2 pt-4">
+                            <button onClick={() => setStep(1)} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg font-bold text-sm">Atrás</button>
+                            <button onClick={handleSaveEdit} className="flex-[2] py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-bold text-sm shadow-lg">Guardar Cambios</button>
+                        </div>
+                    </div>
+                )}
+
+                {/* --- PASO 6: ELIMINAR CON MOTIVO (NUEVO) --- */}
+                {step === 6 && (
+                    <div className="p-5 space-y-4 animate-in slide-in-from-right-4 duration-300">
+                        <div className="bg-red-50 p-3 rounded text-xs text-red-800 mb-2 border border-red-100 flex items-center gap-2"><AlertCircle size={14}/> Esta acción borrará la tarea de la agenda.</div>
+                        <div>
+                            <label className={labelClass}>Motivo de la eliminación (Obligatorio *)</label>
+                            <textarea className={`w-full p-3 border rounded-lg text-sm h-24 focus:ring-2 outline-none resize-none transition-all ${!isDeleteReasonValid ? 'border-red-300 focus:ring-red-200' : 'border-slate-300 focus:ring-red-500'}`} placeholder="Ej: Error al duplicar, cliente canceló cita..." value={deleteReason} onChange={(e) => setDeleteReason(e.target.value)} autoFocus />
+                            {!isDeleteReasonValid && <p className="text-[10px] text-red-500 mt-1">Debes indicar un motivo.</p>}
+                        </div>
+                        <div className="flex gap-2 pt-4">
+                            <button onClick={() => setStep(1)} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg font-bold text-sm">Cancelar</button>
+                            <button onClick={() => onAction('delete', deleteReason, null)} disabled={!isDeleteReasonValid} className="flex-[2] py-3 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg font-bold text-sm shadow-lg">Confirmar Borrado</button>
+                        </div>
                     </div>
                 )}
             </div>
@@ -381,7 +473,7 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
     );
 };
 
-// 4. VISTA AGENDA SEMANAL (MODIFICADA - FILTRO USUARIO + LOGICA PROVINCIAS)
+// 4. VISTA AGENDA SEMANAL (MODIFICADA - FILTRO USUARIO + LOGICA PROVINCIAS + EDICIÓN Y BORRADO)
 const AgendaView = ({ contacts, onActionComplete, userRole, session }: any) => {
     const [weekOffset, setWeekOffset] = useState(0);
     const [modalOpen, setModalOpen] = useState(false);
@@ -396,7 +488,7 @@ const AgendaView = ({ contacts, onActionComplete, userRole, session }: any) => {
         }
     }, [userRole, session]);
 
-    // Obtener usuarios únicos para el filtro (igual que Dashboard)
+    // Obtener usuarios únicos para el filtro
     const uniqueSalesUsers = Array.from(new Set(contacts.map((c: any) => c.user_id))).map(id => { 
         const contact = contacts.find((c: any) => c.user_id === id); 
         const name = contact?.profiles?.full_name || contact?.profiles?.email || 'Desconocido'; 
@@ -420,27 +512,53 @@ const AgendaView = ({ contacts, onActionComplete, userRole, session }: any) => {
         setDraggedTaskId(null);
     };
 
-    const handleModalAction = async (type: 'delete' | 'complete' | 'complete_new' | 'reschedule', report: string, nextActionData: any) => {
+    // FUNCIÓN ACTUALIZADA PARA MANEJAR EDICIÓN Y BORRADO CON MOTIVO
+    const handleModalAction = async (type: 'delete' | 'complete' | 'complete_new' | 'reschedule' | 'edit', report: string, nextActionData: any) => {
         if (!selectedTask) return;
         try {
             let updates: any = {};
             const today = new Date().toISOString().split('T')[0];
             const timeNow = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
             
+            // CASO 1: REPROGRAMAR (Solo fecha/hora)
             if (type === 'reschedule') {
                 updates = { next_action_date: nextActionData.date, next_action_time: nextActionData.time };
-            } else {
-                let actionLabel = "✅ COMPLETADO"; if (type === 'delete') actionLabel = "❌ CANCELADO";
-                const logEntry = `\n[${today} ${timeNow}] ${actionLabel}: ${selectedTask.next_action}\n> Reporte: ${report}\n-------------------`;
+            } 
+            // CASO 2: EDITAR (Nuevo - Solo texto)
+            else if (type === 'edit') {
+                 updates = { next_action: nextActionData.action };
+            }
+            // CASO 3: BORRAR O COMPLETAR
+            else {
+                let actionLabel = "✅ COMPLETADO"; 
+                if (type === 'delete') actionLabel = "❌ ELIMINADO/CANCELADO";
+                
+                // Construimos el log. Si es delete, el 'report' trae el motivo del borrado.
+                const logEntry = `\n[${today} ${timeNow}] ${actionLabel}: ${selectedTask.next_action}\n> ${type === 'delete' ? 'Motivo' : 'Reporte'}: ${report}\n-------------------`;
                 const currentSummary = selectedTask.solution_summary || '';
                 
-                if (type === 'delete' || type === 'complete') { updates = { next_action_date: null, next_action_time: null, next_action: type === 'delete' ? 'Tarea Cancelada' : 'Acción Completada (Definir siguiente)', solution_summary: currentSummary + logEntry }; } 
-                else if (type === 'complete_new') { updates = { next_action: nextActionData.action, next_action_date: nextActionData.date, next_action_time: nextActionData.time, solution_summary: currentSummary + logEntry }; }
+                if (type === 'delete' || type === 'complete') { 
+                    updates = { 
+                        next_action_date: null, 
+                        next_action_time: null, 
+                        next_action: type === 'delete' ? 'Tarea Cancelada' : 'Acción Completada (Definir siguiente)', 
+                        solution_summary: currentSummary + logEntry 
+                    }; 
+                } 
+                else if (type === 'complete_new') { 
+                    updates = { 
+                        next_action: nextActionData.action, 
+                        next_action_date: nextActionData.date, 
+                        next_action_time: nextActionData.time, 
+                        solution_summary: currentSummary + logEntry 
+                    }; 
+                }
             }
 
             const { error } = await supabase.from('industrial_contacts').update(updates).eq('id', selectedTask.id);
             if (error) throw error;
-            await onActionComplete(); setModalOpen(false);
+            await onActionComplete(); 
+            setModalOpen(false);
         } catch (error: any) { alert("Error: " + error.message); }
     };
 
@@ -460,7 +578,7 @@ const AgendaView = ({ contacts, onActionComplete, userRole, session }: any) => {
 
     const overdueTasks = relevantTasks.filter((c: any) => c.next_action_date < currentWeekStart).sort((a: any, b: any) => a.next_action_date.localeCompare(b.next_action_date));
 
-    // RENDERIZADOR DE TARJETA MEJORADO (PROVINCIAS)
+    // RENDERIZADOR DE TARJETA
     const renderTaskCard = (task: any, isOverdue: boolean = false, majorityProvince: string | null = null) => {
         let borderColor = "border-l-blue-500"; 
         let icon = <Phone size={12} />; 
@@ -473,7 +591,6 @@ const AgendaView = ({ contacts, onActionComplete, userRole, session }: any) => {
             if (action.includes("oferta") || action.includes("presupuesto")) { borderColor = "border-l-orange-500"; icon = <FileText size={12}/>; }
         }
 
-        // Detectar si la provincia no coincide con la mayoritaria (solo para visitas y si hay mayoría definida)
         const isWrongProvince = isVisit && majorityProvince && task.state && task.state !== majorityProvince;
 
         return ( 
