@@ -17,7 +17,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V10.20 - Fix List Card Width"; 
+const APP_VERSION = "V10.21 - Dashboard Clean"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
 const SUPER_ADMIN_EMAIL = "jesusblanco@mmesl.com";
@@ -260,7 +260,11 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
             <Card className="p-6"><h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-slate-800"><BarChart2 className="text-purple-600"/> Calidad de Fichas</h3><div className="space-y-6"><div><div className="flex justify-between text-sm mb-1"><span className="text-slate-600 flex items-center gap-2"><FileText size={14}/> Datos Materiales Completos</span><span className="font-bold text-slate-800">{materialsPct}%</span></div><div className="w-full bg-slate-100 rounded-full h-2.5"><div className="bg-purple-600 h-2.5 rounded-full transition-all duration-1000" style={{ width: `${materialsPct}%` }}></div></div><p className="text-xs text-slate-400 mt-1">{withMaterials} de {total} contactos tienen materiales registrados.</p></div><div><div className="flex justify-between text-sm mb-1"><span className="text-slate-600 flex items-center gap-2"><Target size={14}/> Parque Maquinaria Completo</span><span className="font-bold text-slate-800">{machinesPct}%</span></div><div className="w-full bg-slate-100 rounded-full h-2.5"><div className="bg-orange-500 h-2.5 rounded-full transition-all duration-1000" style={{ width: `${machinesPct}%` }}></div></div><p className="text-xs text-slate-400 mt-1">{withMachines} de {total} contactos tienen maquinaria registrada.</p></div></div></Card>
-            <Card className="p-6 flex flex-col justify-center items-center text-center bg-gradient-to-br from-white to-slate-50"><div className="p-4 mb-4"><img src={logoM} alt="Logo" className="w-20 h-20 object-contain opacity-90" /></div><h3 className="font-bold text-lg text-slate-800 mb-2">Acceso Rápido</h3><div className="flex flex-col gap-3 w-full max-w-xs"><Button onClick={() => { setEditingContact(null); setView('form'); }} icon={UserPlus} className="shadow-lg justify-center w-full">Nuevo Briefing</Button><Button onClick={() => setView('agenda')} icon={Calendar} variant="secondary" className="justify-center w-full border border-slate-200">Ver Agenda Completa</Button></div></Card>
+            <Card className="p-6 flex flex-col justify-center items-center text-center bg-gradient-to-br from-white to-slate-50">
+                {/* --- CAMBIO: Eliminado el Logo y reducido el margen superior --- */}
+                <h3 className="font-bold text-lg text-slate-800 mb-4">Acceso Rápido</h3>
+                <div className="flex flex-col gap-3 w-full max-w-xs"><Button onClick={() => { setEditingContact(null); setView('form'); }} icon={UserPlus} className="shadow-lg justify-center w-full">Nuevo Briefing</Button><Button onClick={() => setView('agenda')} icon={Calendar} variant="secondary" className="justify-center w-full border border-slate-200">Ver Agenda Completa</Button></div>
+            </Card>
         </div>
       </div>
     );
