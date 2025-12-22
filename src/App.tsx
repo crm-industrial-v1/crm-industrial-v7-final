@@ -17,7 +17,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V10.18 - Final Gap Fix"; 
+const APP_VERSION = "V10.20 - Fix List Card Width"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
 const SUPER_ADMIN_EMAIL = "jesusblanco@mmesl.com";
@@ -411,7 +411,7 @@ const AgendaView = ({ contacts, onActionComplete }: any) => {
 };
 
 // 5. VISTA LISTA
-// CORRECCIÓN: Eliminado 'onOpenNewAction' porque ahora usamos estado local para eso
+// CORRECCIÓN: Optimización de anchura para móvil
 const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, session, setEditingContact, setView, handleDelete }: any) => {
     const [viewFilter, setViewFilter] = useState<string>('all'); 
     const [historyModalOpen, setHistoryModalOpen] = useState(false);
@@ -435,7 +435,7 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
       <div className="space-y-4 animate-in fade-in duration-500 pb-24 w-full overflow-hidden">
         <ClientHistoryModal isOpen={historyModalOpen} onClose={() => setHistoryModalOpen(false)} client={selectedClientHistory} onOpenNewAction={(client: any) => { setSelectedClientForAction(client); setNewActionModalOpen(true); }} />
         <NewActionModal isOpen={newActionModalOpen} onClose={() => setNewActionModalOpen(false)} onSave={handleSaveNewAction} clientName={selectedClientForAction?.fiscal_name || 'Cliente'} />
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
+        <div className="bg-white p-3 md:p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                <div><h2 className="text-xl font-bold text-slate-800">Base de Datos</h2><p className="text-xs text-slate-500">{userRole === 'sales' ? 'Mis Fichas' : `Mostrando: ${viewFilter === 'all' ? 'Todos' : viewFilter === 'mine' ? 'Mis Fichas' : 'Filtro Usuario'}`}</p></div>
                {(userRole === 'manager' || userRole === 'admin') && (<div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200 w-full md:w-auto overflow-x-auto no-scrollbar"><button onClick={() => setViewFilter('all')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors whitespace-nowrap ${viewFilter === 'all' ? 'bg-white text-blue-600 shadow-sm border' : 'text-slate-500 hover:text-slate-700'}`}>Todos</button><button onClick={() => setViewFilter('mine')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors whitespace-nowrap ${viewFilter === 'mine' ? 'bg-white text-blue-600 shadow-sm border' : 'text-slate-500 hover:text-slate-700'}`}>Míos</button><div className="h-4 w-px bg-slate-300 mx-1"></div><select value={viewFilter !== 'all' && viewFilter !== 'mine' ? viewFilter : ''} onChange={(e) => setViewFilter(e.target.value || 'all')} className="bg-transparent text-xs font-bold text-slate-600 outline-none min-w-[120px]"><option value="">Filtrar por usuario...</option>{uniqueSalesUsers.map((u: any) => (<option key={u.id} value={u.id}>{u.label}</option>))}</select></div>)}
@@ -446,7 +446,8 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
           <div className="grid gap-3 w-full">
             {filtered.length === 0 && <div className="text-center py-10 text-slate-400">No se encontraron resultados.</div>}
             {filtered.map((c: any) => (
-              <Card key={c.id} className="p-4 hover:shadow-lg transition-all border border-slate-200 w-full max-w-full">
+              // CORRECCIÓN: 'max-w-full' y 'overflow-hidden' para evitar desbordamiento
+              <Card key={c.id} className="p-3 md:p-4 hover:shadow-lg transition-all border border-slate-200 w-full max-w-full overflow-hidden">
                 <div className="flex flex-col md:flex-row justify-between items-start gap-3 w-full">
                   <div className="flex-1 min-w-0 w-full">
                     <div className="flex flex-col gap-1 mb-2">
@@ -458,14 +459,12 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
                     </div>
                     <div className="flex flex-col gap-1 text-sm text-slate-600"><span className="flex items-center gap-2 truncate"><Users size={14} className="text-slate-400 shrink-0"/> {c.contact_person || 'Sin contacto'}</span><span className="flex items-center gap-2 truncate"><Briefcase size={14} className="text-slate-400 shrink-0"/> <span className="text-slate-500 text-xs">Titular:</span> {c.profiles?.full_name || c.profiles?.email || 'N/A'}</span></div>
                   </div>
-                  <div className="flex gap-2 shrink-0 self-end md:self-start w-full md:w-auto justify-end border-t md:border-none pt-2 md:pt-0 mt-2 md:mt-0">
-                      <button onClick={() => { setSelectedClientHistory(c); setHistoryModalOpen(true); }} className="p-2 text-slate-400 hover:text-purple-600 bg-slate-50 hover:bg-purple-50 rounded-lg flex-1 md:flex-none flex justify-center transition-colors" title="Ver Historial"><ClipboardList size={18}/></button>
-                      
-                      {/* --- CORRECCIÓN AQUÍ: USAMOS EL ESTADO LOCAL --- */}
-                      <button onClick={() => { setSelectedClientForAction(c); setNewActionModalOpen(true); }} className="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 rounded-lg flex-1 md:flex-none flex justify-center"><CalendarPlus size={18}/></button>
-                      
-                      <button onClick={() => { setEditingContact(c); setView('form'); }} className="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 rounded-lg flex-1 md:flex-none flex justify-center"><Edit size={18}/></button>
-                      {(userRole === 'admin' || c.user_id === session.user.id) && (<button onClick={() => handleDelete(c.id)} className="p-2 text-slate-400 hover:text-red-600 bg-slate-50 rounded-lg flex-1 md:flex-none flex justify-center"><Trash2 size={18}/></button>)}
+                  {/* CORRECCIÓN: Botones en GRID con gap pequeño para que quepan en móvil */}
+                  <div className={`grid ${userRole === 'admin' || c.user_id === session.user.id ? 'grid-cols-4' : 'grid-cols-3'} gap-1 w-full md:w-auto md:flex md:gap-2 shrink-0 self-end md:self-start justify-end border-t md:border-none pt-2 md:pt-0 mt-2 md:mt-0`}>
+                      <button onClick={() => { setSelectedClientHistory(c); setHistoryModalOpen(true); }} className="p-1.5 md:p-2 text-slate-400 hover:text-purple-600 bg-slate-50 hover:bg-purple-50 rounded-lg flex justify-center transition-colors" title="Ver Historial"><ClipboardList size={18}/></button>
+                      <button onClick={() => { setSelectedClientForAction(c); setNewActionModalOpen(true); }} className="p-1.5 md:p-2 text-slate-400 hover:text-blue-600 bg-slate-50 rounded-lg flex justify-center"><CalendarPlus size={18}/></button>
+                      <button onClick={() => { setEditingContact(c); setView('form'); }} className="p-1.5 md:p-2 text-slate-400 hover:text-blue-600 bg-slate-50 rounded-lg flex justify-center"><Edit size={18}/></button>
+                      {(userRole === 'admin' || c.user_id === session.user.id) && (<button onClick={() => handleDelete(c.id)} className="p-1.5 md:p-2 text-slate-400 hover:text-red-600 bg-slate-50 rounded-lg flex justify-center"><Trash2 size={18}/></button>)}
                   </div>
                 </div>
               </Card>
@@ -591,7 +590,7 @@ export default function App() {
              <span className="font-bold text-slate-800">Briefing Colaborativo</span><div className="w-8"></div>
           </header>
           
-          <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 pt-0 md:p-8 w-full scroll-smooth bg-slate-50">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 pt-0 md:p-8 w-full scroll-smooth bg-slate-50">
             {/* CORRECCIÓN: Renderizado condicional estricto para evitar espacio fantasma */}
             {view !== 'form' ? (
                 <div className="px-1 pt-0 md:p-0 pb-20 w-full"> 
