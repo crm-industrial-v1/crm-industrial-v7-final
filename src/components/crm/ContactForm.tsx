@@ -164,13 +164,18 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
 
     useEffect(() => {
         if (initialData) {
-            const { id, created_at, user_id, profiles, ...rest } = initialData;
-            const cleanData = { ...rest };
-            delete cleanData.quality_rating; delete cleanData.sustainable_interest;
-            delete cleanData.mac1_type; delete cleanData.mac1_brand; 
-            delete cleanData.mac1_age; delete cleanData.mac1_status;
+            // Limpiamos datos que no pertenecen al formulario directo o que son relaciones
+            const { id, created_at, user_id, profiles, contact_materials, contact_machinery, ...rest } = initialData;
+            
+            // Convertimos nulls a strings vacíos para evitar warnings de React
+            const cleanData = Object.entries(rest).reduce((acc: any, [key, value]) => {
+                acc[key] = value === null ? '' : value;
+                return acc;
+            }, {});
 
-            setFormData(cleanData);
+            setFormData(prev => ({ ...prev, ...cleanData }));
+            
+            // Cargamos las relaciones por separado
             fetchRelatedData(initialData.id);
         } else {
             addMaterial();
@@ -215,23 +220,35 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
         e.preventDefault();
         setSaving(true);
         try {
-            const contactPayload: any = { ...formData };
-            if (!contactPayload.next_action_date) contactPayload.next_action_date = null;
-            if (!contactPayload.next_action_time) contactPayload.next_action_time = null;
-            if (!initialData) contactPayload.user_id = session.user.id;
+            // 1. PREPARAR DATOS DEL CONTACTO (Eliminar relaciones y campos extraños)
+            // Extraemos formData y eliminamos explícitamente cualquier array o objeto anidado que pueda haber
+            const { ...cleanData }: any = formData;
+            
+            // Eliminamos las claves que dan error porque no existen en la tabla 'industrial_contacts'
+            delete cleanData.contact_materials;
+            delete cleanData.contact_machinery;
+            delete cleanData.profiles; 
+
+            // Ajustes finales de fechas y usuario
+            if (!cleanData.next_action_date) cleanData.next_action_date = null;
+            if (!cleanData.next_action_time) cleanData.next_action_time = null;
+            if (!initialData) cleanData.user_id = session.user.id;
 
             let contactId = initialData?.id;
             
+            // 2. GUARDAR CONTACTO PRINCIPAL
             if (initialData) {
-                const { error } = await supabase.from('industrial_contacts').update(contactPayload).eq('id', initialData.id);
+                const { error } = await supabase.from('industrial_contacts').update(cleanData).eq('id', initialData.id);
                 if (error) throw error;
             } else {
-                const { data, error } = await supabase.from('industrial_contacts').insert([contactPayload]).select().single();
+                const { data, error } = await supabase.from('industrial_contacts').insert([cleanData]).select().single();
                 if (error) throw error;
                 contactId = data.id;
             }
 
+            // 3. GUARDAR RELACIONES (Materiales y Maquinaria)
             if (contactId) {
+                // Materiales
                 await supabase.from('contact_materials').delete().eq('contact_id', contactId);
                 const matsToSave = materials.filter(m => m.material_type).map(m => ({
                     contact_id: contactId,
@@ -239,10 +256,10 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                     consumption: m.consumption, price: m.price, supplier: m.supplier, notes: m.notes
                 }));
                 if (matsToSave.length > 0) {
-                     const cleanMats = matsToSave.map(({tempId, ...rest}: any) => rest);
-                     await supabase.from('contact_materials').insert(cleanMats);
+                     await supabase.from('contact_materials').insert(matsToSave);
                 }
 
+                // Maquinaria
                 await supabase.from('contact_machinery').delete().eq('contact_id', contactId);
                 const macsToSave = machines.filter(m => m.machine_type).map(m => ({
                     contact_id: contactId,
@@ -254,6 +271,7 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
             }
             onSuccess();
         } catch (err: any) {
+            console.error("Error detallado:", err);
             alert('Error al guardar: ' + err.message);
         } finally {
             setSaving(false);
@@ -586,7 +604,7 @@ export default function ContactForm({ session, initialData, onCancel, onSuccess 
                                         </div>
                                     </div>
                                 ))}
-                                <button type="button" onClick={addMaterial} className="w-full py-4 border-2 border-dashed border-blue-300 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"><Plus size={20} /> Añadir Otro Material</button>
+                                <button type="button" onClick={addMaterial} className="w-full py-4 border-2 border-dashed border-blue-300 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"><Plus size={20} /> Añadir Otra Material</button>
                             </div>
                         </div>
 
