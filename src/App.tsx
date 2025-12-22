@@ -5,7 +5,7 @@ import {
   Briefcase, CheckCircle2, Clock, FileText, 
   LogOut, Shield, UserCog, Menu, Loader2, Calendar, User, Lock, Filter, KeyRound,
   ArrowLeft, ArrowRight, Phone, BarChart2, CheckSquare, X, CalendarPlus, Save, AlertCircle, ClipboardList, Activity,
-  AlertTriangle, ListTodo
+  AlertTriangle, ListTodo, MapPin
 } from 'lucide-react';
 
 // --- IMPORTAMOS EL NUEVO LOGO ---
@@ -18,7 +18,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V10.28 - Final Clean (Unused Imports Removed)"; 
+const APP_VERSION = "V10.30 - Final Strict Fix"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
 const SUPER_ADMIN_EMAIL = "jesusblanco@mmesl.com";
@@ -381,22 +381,35 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
     );
 };
 
-// 4. VISTA AGENDA SEMANAL (MODIFICADA - CON COLUMNA BACKLOG / ATRASADAS)
-const AgendaView = ({ contacts, onActionComplete }: any) => {
+// 4. VISTA AGENDA SEMANAL (MODIFICADA - FILTRO USUARIO + LOGICA PROVINCIAS)
+const AgendaView = ({ contacts, onActionComplete, userRole, session }: any) => {
     const [weekOffset, setWeekOffset] = useState(0);
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedTask, setSelectedTask] = useState<any>(null);
     const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+    const [filterUserId, setFilterUserId] = useState<string>('all');
+
+    // Inicializar filtro de usuario (si es ventas, solo ve lo suyo)
+    useEffect(() => {
+        if (userRole === 'sales' && session?.user?.id) {
+            setFilterUserId(session.user.id);
+        }
+    }, [userRole, session]);
+
+    // Obtener usuarios únicos para el filtro (igual que Dashboard)
+    const uniqueSalesUsers = Array.from(new Set(contacts.map((c: any) => c.user_id))).map(id => { 
+        const contact = contacts.find((c: any) => c.user_id === id); 
+        const name = contact?.profiles?.full_name || contact?.profiles?.email || 'Desconocido'; 
+        return { id, label: name }; 
+    }).filter(u => u.label !== 'Desconocido');
 
     const handleDragStart = (e: React.DragEvent, taskId: string) => { setDraggedTaskId(taskId); e.dataTransfer.effectAllowed = "move"; };
     const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; };
     
-    // Al soltar en un día de la semana
     const handleDrop = async (e: React.DragEvent, targetDate: string) => {
         e.preventDefault();
         if (!draggedTaskId) return;
         const task = contacts.find((c: any) => c.id === draggedTaskId);
-        // Solo actualizamos si la fecha cambia
         if (task && task.next_action_date !== targetDate) {
             try { 
                 const { error } = await supabase.from('industrial_contacts').update({ next_action_date: targetDate }).eq('id', draggedTaskId); 
@@ -431,30 +444,37 @@ const AgendaView = ({ contacts, onActionComplete }: any) => {
         } catch (error: any) { alert("Error: " + error.message); }
     };
 
-    // Generar días de la semana
     const getWeekDays = (offset: number) => { const curr = new Date(); const day = curr.getDay(); const diff = curr.getDate() - day + (day === 0 ? -6 : 1); const monday = new Date(curr.setDate(diff)); monday.setDate(monday.getDate() + (offset * 7)); const week = []; for (let i = 0; i < 5; i++) { const d = new Date(monday); d.setDate(monday.getDate() + i); week.push(d.toISOString().split('T')[0]); } return week; };
     const weekDays = getWeekDays(weekOffset); 
-    const currentWeekStart = weekDays[0]; // El Lunes de la semana visualizada
+    const currentWeekStart = weekDays[0]; 
     const today = new Date().toISOString().split('T')[0]; 
-    const dayNames = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+    const dayNames = ["LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES"];
     
-    // Tareas generales
-    const tasks = contacts.filter((c: any) => c.next_action_date);
+    // FILTRADO DE TAREAS POR USUARIO
+    let relevantTasks = contacts.filter((c: any) => c.next_action_date);
+    if (userRole === 'sales') {
+        relevantTasks = relevantTasks.filter((c: any) => c.user_id === session.user.id);
+    } else if (filterUserId !== 'all') {
+        relevantTasks = relevantTasks.filter((c: any) => c.user_id === filterUserId);
+    }
 
-    // FILTRO: Tareas Atrasadas (Fecha anterior al Lunes de esta semana visualizada)
-    const overdueTasks = tasks.filter((c: any) => c.next_action_date < currentWeekStart).sort((a: any, b: any) => a.next_action_date.localeCompare(b.next_action_date));
+    const overdueTasks = relevantTasks.filter((c: any) => c.next_action_date < currentWeekStart).sort((a: any, b: any) => a.next_action_date.localeCompare(b.next_action_date));
 
-    // Renderizador de Tarjeta (Reutilizable)
-    const renderTaskCard = (task: any, isOverdue: boolean = false) => {
+    // RENDERIZADOR DE TARJETA MEJORADO (PROVINCIAS)
+    const renderTaskCard = (task: any, isOverdue: boolean = false, majorityProvince: string | null = null) => {
         let borderColor = "border-l-blue-500"; 
         let icon = <Phone size={12} />; 
         const action = task.next_action?.toLowerCase() || ''; 
+        const isVisit = action.includes("visita");
         
-        if (isOverdue) borderColor = "border-l-red-500 bg-red-50"; // Color rojo para atrasadas
+        if (isOverdue) borderColor = "border-l-red-500 bg-red-50"; 
         else {
-            if (action.includes("visita")) { borderColor = "border-l-emerald-500"; icon = <Users size={12}/>; } 
+            if (isVisit) { borderColor = "border-l-emerald-500"; icon = <Users size={12}/>; } 
             if (action.includes("oferta") || action.includes("presupuesto")) { borderColor = "border-l-orange-500"; icon = <FileText size={12}/>; }
         }
+
+        // Detectar si la provincia no coincide con la mayoritaria (solo para visitas y si hay mayoría definida)
+        const isWrongProvince = isVisit && majorityProvince && task.state && task.state !== majorityProvince;
 
         return ( 
             <div key={task.id} draggable onDragStart={(e) => handleDragStart(e, task.id)} onClick={() => { setSelectedTask(task); setModalOpen(true); }} className={`bg-white p-3 rounded-lg border border-slate-100 border-l-4 ${borderColor} shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md transition-all active:scale-95 group relative mb-2`}>
@@ -462,10 +482,17 @@ const AgendaView = ({ contacts, onActionComplete }: any) => {
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 ${isOverdue ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}>
                         {icon} {isOverdue ? `${task.next_action_date.split('-')[2]}/${task.next_action_date.split('-')[1]}` : task.next_action_time?.slice(0,5)}
                     </span>
-                    {isOverdue && <span className="text-[9px] font-bold text-red-600 animate-pulse">!</span>}
+                    {isWrongProvince && <span title="Posible error de ruta" className="text-red-500 animate-pulse"><AlertTriangle size={12}/></span>}
                 </div>
                 <p className="text-xs font-bold text-slate-800 line-clamp-1">{task.fiscal_name}</p>
-                <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1 capitalize">{task.next_action}</p>
+                <div className="flex justify-between items-end mt-0.5">
+                    <p className="text-[10px] text-slate-500 line-clamp-1 capitalize">{task.next_action}</p>
+                    {isVisit && task.state && (
+                        <span className={`text-[9px] font-bold px-1 rounded flex items-center gap-0.5 ${isWrongProvince ? 'text-red-600 bg-red-50' : 'text-slate-400 bg-slate-50'}`}>
+                            <MapPin size={8} /> {task.state}
+                        </span>
+                    )}
+                </div>
             </div> 
         );
     };
@@ -474,9 +501,22 @@ const AgendaView = ({ contacts, onActionComplete }: any) => {
         <div className="space-y-4 animate-in fade-in pb-24 h-full flex flex-col">
             <TaskActionModal isOpen={modalOpen} onClose={() => setModalOpen(false)} taskTitle={selectedTask?.next_action || 'Tarea'} currentTask={selectedTask} onAction={handleModalAction} />
             
-            {/* CABECERA AGENDA */}
-            <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm shrink-0 gap-4">
-                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Calendar className="text-blue-600"/> Agenda Semanal</h2>
+            {/* CABECERA AGENDA CON FILTRO */}
+            <div className="flex flex-col md:flex-row justify-between items-center bg-white p-3 rounded-xl border border-slate-200 shadow-sm shrink-0 gap-4">
+                <div className="flex items-center gap-4">
+                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Calendar className="text-blue-600"/> Agenda Semanal</h2>
+                    {/* FILTRO DE USUARIO (Solo Admin/Manager) */}
+                    {(userRole !== 'sales') && (
+                        <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                            <Filter size={14} className="text-slate-400" />
+                            <select className="bg-transparent text-xs font-bold text-slate-700 outline-none cursor-pointer min-w-[120px]" value={filterUserId} onChange={(e) => setFilterUserId(e.target.value)}>
+                                <option value="all">Equipo: Todos</option>
+                                <option disabled>──────────</option>
+                                {uniqueSalesUsers.map((u: any) => (<option key={u.id} value={u.id}>{u.label}</option>))}
+                            </select>
+                        </div>
+                    )}
+                </div>
                 <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200">
                     <button onClick={() => setWeekOffset(weekOffset - 1)} className="p-2 hover:bg-white rounded-md shadow-sm transition-all text-slate-600"><ArrowLeft size={18}/></button>
                     <span className="text-sm font-bold w-32 text-center text-slate-700">{weekOffset === 0 ? "Esta Semana" : weekOffset === 1 ? "Próxima" : weekOffset === -1 ? "Pasada" : `Semana ${weekOffset > 0 ? '+' : ''}${weekOffset}`}</span>
@@ -484,37 +524,50 @@ const AgendaView = ({ contacts, onActionComplete }: any) => {
                 </div>
             </div>
 
-            {/* GRID DE 6 COLUMNAS (1 Backlog + 5 Días) */}
             <div className="grid grid-cols-1 md:grid-cols-6 gap-4 h-full overflow-y-auto">
-                
-                {/* COLUMNA 1: ATRASADAS / PENDIENTES */}
+                {/* COLUMNA 1: ATRASADAS */}
                 <div className="flex flex-col h-full min-h-[200px] rounded-xl border border-red-200 bg-red-50/30">
                     <div className="p-3 text-center border-b border-red-200 bg-red-100/50 rounded-t-xl">
                         <p className="text-xs font-bold uppercase text-red-700 flex items-center justify-center gap-1"><AlertCircle size={12}/> Pendientes</p>
-                        <p className="text-[10px] font-bold text-red-800 opacity-70">Anteriores a esta semana</p>
+                        <p className="text-[10px] font-bold text-red-800 opacity-70">Anteriores</p>
                     </div>
                     <div className="p-2 flex-1 overflow-y-auto">
-                        {overdueTasks.length > 0 ? (
-                            overdueTasks.map((task: any) => renderTaskCard(task, true))
-                        ) : (
-                            <div className="h-20 flex items-center justify-center opacity-40"><p className="text-[10px] text-slate-500 italic text-center">¡Todo al día! <br/>Sin tareas antiguas.</p></div>
+                        {overdueTasks.length > 0 ? overdueTasks.map((task: any) => renderTaskCard(task, true)) : (
+                            <div className="h-20 flex items-center justify-center opacity-40"><p className="text-[10px] text-slate-500 italic text-center">¡Al día!</p></div>
                         )}
                     </div>
                 </div>
 
                 {/* COLUMNAS 2-6: LUNES A VIERNES */}
                 {weekDays.map((dateStr, index) => { 
-                    const dayTasks = tasks.filter((c: any) => c.next_action_date === dateStr).sort((a: any, b: any) => (a.next_action_time || '00:00').localeCompare(b.next_action_time || '00:00')); 
+                    const dayTasks = relevantTasks.filter((c: any) => c.next_action_date === dateStr).sort((a: any, b: any) => (a.next_action_time || '00:00').localeCompare(b.next_action_time || '00:00')); 
                     const isToday = dateStr === today; 
                     
+                    // CÁLCULO DE PROVINCIA MAYORITARIA
+                    const visitTasks = dayTasks.filter((t: any) => t.next_action?.toLowerCase().includes('visita'));
+                    const provinceCounts: any = {};
+                    visitTasks.forEach((t: any) => { if(t.state) provinceCounts[t.state] = (provinceCounts[t.state] || 0) + 1; });
+                    
+                    let majorityProvince: string | null = null;
+                    let maxCount = 0;
+                    Object.entries(provinceCounts).forEach(([prov, count]: any) => {
+                        if(count > maxCount) { maxCount = count; majorityProvince = prov; }
+                    });
+
                     return ( 
                         <div key={dateStr} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, dateStr)} className={`flex flex-col h-full min-h-[200px] rounded-xl border transition-colors ${isToday ? 'border-blue-400 ring-1 ring-blue-200 bg-blue-50/20' : 'border-slate-200 bg-slate-50/30'}`}>
-                            <div className={`p-3 text-center border-b ${isToday ? 'bg-blue-100/50 border-blue-200' : 'bg-slate-100/50 border-slate-200'} rounded-t-xl`}>
+                            <div className={`p-2 text-center border-b ${isToday ? 'bg-blue-100/50 border-blue-200' : 'bg-slate-100/50 border-slate-200'} rounded-t-xl`}>
                                 <p className={`text-xs font-bold uppercase ${isToday ? 'text-blue-700' : 'text-slate-500'}`}>{dayNames[index]}</p>
-                                <p className={`text-sm font-bold ${isToday ? 'text-blue-900' : 'text-slate-700'}`}>{dateStr.split('-')[2]}/{dateStr.split('-')[1]}</p>
+                                <p className={`text-[10px] font-bold ${isToday ? 'text-blue-900' : 'text-slate-600'}`}>{dateStr.split('-')[2]}/{dateStr.split('-')[1]}</p>
+                                {majorityProvince && (
+                                    <div className="mt-1 inline-flex items-center gap-1 bg-white px-2 py-0.5 rounded-full border border-slate-200 shadow-sm">
+                                        <MapPin size={8} className="text-emerald-500"/>
+                                        <span className="text-[9px] font-bold text-slate-700 uppercase truncate max-w-[80px]">{majorityProvince}</span>
+                                    </div>
+                                )}
                             </div>
                             <div className="p-2 flex-1 overflow-y-auto">
-                                {dayTasks.map((task: any) => renderTaskCard(task, false))}
+                                {dayTasks.map((task: any) => renderTaskCard(task, false, majorityProvince))}
                                 {dayTasks.length === 0 && <div className="h-20 flex items-center justify-center opacity-30"><p className="text-xs text-slate-400 italic">--</p></div>}
                             </div>
                         </div> 
@@ -526,7 +579,6 @@ const AgendaView = ({ contacts, onActionComplete }: any) => {
 };
 
 // 5. VISTA LISTA
-// CORRECCIÓN: Optimización de anchura para móvil y búsqueda
 const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, session, setEditingContact, setView, handleDelete }: any) => {
     const [viewFilter, setViewFilter] = useState<string>('all'); 
     const [historyModalOpen, setHistoryModalOpen] = useState(false);
@@ -543,7 +595,6 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
     if (userRole === 'sales') { displayContacts = contacts.filter((c: any) => c.user_id === session.user.id); } 
     else { if (viewFilter === 'mine') { displayContacts = contacts.filter((c: any) => c.user_id === session.user.id); } else if (viewFilter !== 'all') { displayContacts = contacts.filter((c: any) => c.user_id === viewFilter); } }
     
-    // CORRECCIÓN BÚSQUEDA: Añadido filtro por persona de contacto
     const filtered = displayContacts.filter((c: any) => c.fiscal_name?.toLowerCase().includes(searchTerm.toLowerCase()) || c.contact_person?.toLowerCase().includes(searchTerm.toLowerCase()));
     const uniqueSalesUsers = Array.from(new Set(contacts.map((c: any) => c.user_id))).map(id => { const contact = contacts.find((c: any) => c.user_id === id); const name = contact?.profiles?.full_name || contact?.profiles?.email || 'Desconocido'; return { id, label: name }; }).filter(u => u.label !== 'Desconocido');
 
@@ -556,7 +607,6 @@ const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, sess
                <div><h2 className="text-xl font-bold text-slate-800">Base de Datos</h2><p className="text-xs text-slate-500">{userRole === 'sales' ? 'Mis Fichas' : `Mostrando: ${viewFilter === 'all' ? 'Todos' : viewFilter === 'mine' ? 'Mis Fichas' : 'Filtro Usuario'}`}</p></div>
                {(userRole === 'manager' || userRole === 'admin') && (<div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200 w-full md:w-auto overflow-x-auto no-scrollbar"><button onClick={() => setViewFilter('all')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors whitespace-nowrap ${viewFilter === 'all' ? 'bg-white text-blue-600 shadow-sm border' : 'text-slate-500 hover:text-slate-700'}`}>Todos</button><button onClick={() => setViewFilter('mine')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors whitespace-nowrap ${viewFilter === 'mine' ? 'bg-white text-blue-600 shadow-sm border' : 'text-slate-500 hover:text-slate-700'}`}>Míos</button><div className="h-4 w-px bg-slate-300 mx-1"></div><select value={viewFilter !== 'all' && viewFilter !== 'mine' ? viewFilter : ''} onChange={(e) => setViewFilter(e.target.value || 'all')} className="bg-transparent text-xs font-bold text-slate-600 outline-none min-w-[120px]"><option value="">Filtrar por usuario...</option>{uniqueSalesUsers.map((u: any) => (<option key={u.id} value={u.id}>{u.label}</option>))}</select></div>)}
            </div>
-           {/* CORRECCIÓN ESTILO INPUT: Añadido bg-white y text-slate-900 */}
            <div className="relative w-full"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} /><input type="text" placeholder="Buscar empresa o contacto..." className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white text-slate-900" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
         </div>
         {loading ? <div className="text-center p-20"><Loader2 className="animate-spin mx-auto text-blue-600 mb-4" size={32}/><p className="text-slate-500">Cargando...</p></div> : (
@@ -710,7 +760,10 @@ export default function App() {
             {view !== 'form' ? (
                 <div className="px-1 pt-0 md:p-0 pb-20 w-full"> 
                     {view === 'dashboard' && <DashboardView contacts={contacts} userRole={userRole} userProfile={userProfile} session={session} setEditingContact={setEditingContact} setView={setView} />}
-                    {view === 'agenda' && <AgendaView contacts={contacts} setEditingContact={setEditingContact} setView={setView} onActionComplete={fetchContacts} />}
+                    
+                    {/* AQUI SE PASA LA NUEVA PROP userRole y session para el filtro */}
+                    {view === 'agenda' && <AgendaView contacts={contacts} setEditingContact={setEditingContact} setView={setView} onActionComplete={fetchContacts} userRole={userRole} session={session} />}
+                    
                     {view === 'list' && (
                         <ListView 
                             contacts={contacts} 
