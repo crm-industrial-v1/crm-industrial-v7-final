@@ -17,7 +17,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V10.2 - Errores Vercel"; 
+const APP_VERSION = "V10.13 - Final Clean Build"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
 const SUPER_ADMIN_EMAIL = "jesusblanco@mmesl.com";
@@ -267,7 +267,8 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
 };
 
 // 4. VISTA AGENDA SEMANAL (MODIFICADA - DRAG & DROP)
-const AgendaView = ({ contacts, setEditingContact, setView, onActionComplete }: any) => {
+// CORRECCIÓN: Eliminados 'setEditingContact' y 'setView' de los props porque no se usaban aquí
+const AgendaView = ({ contacts, onActionComplete }: any) => {
     const [weekOffset, setWeekOffset] = useState(0);
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedTask, setSelectedTask] = useState<any>(null);
@@ -322,7 +323,8 @@ const AgendaView = ({ contacts, setEditingContact, setView, onActionComplete }: 
 };
 
 // 5. VISTA LISTA
-const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, session, setEditingContact, setView, handleDelete, onOpenNewAction }: any) => {
+// CORRECCIÓN: Eliminado 'onOpenNewAction' porque ahora usamos estado local para eso
+const ListView = ({ contacts, loading, searchTerm, setSearchTerm, userRole, session, setEditingContact, setView, handleDelete }: any) => {
     const [viewFilter, setViewFilter] = useState<string>('all'); 
     const [historyModalOpen, setHistoryModalOpen] = useState(false);
     const [selectedClientHistory, setSelectedClientHistory] = useState<any>(null);
