@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from './lib/supabase';
 import { 
   LayoutDashboard, Users, UserPlus, Search, Trash2, Edit, 
-  Briefcase, CheckCircle2, Clock, Target, FileText, 
+  Briefcase, CheckCircle2, Clock, FileText, 
   LogOut, Shield, UserCog, Menu, Loader2, Calendar, User, Lock, Filter, KeyRound,
-  ArrowLeft, ArrowRight, Phone, BarChart2, CheckSquare, X, CalendarPlus, Save, AlertCircle, ClipboardList, Activity
+  ArrowLeft, ArrowRight, Phone, BarChart2, CheckSquare, X, CalendarPlus, Save, AlertCircle, ClipboardList, Activity,
+  AlertTriangle, ListTodo
 } from 'lucide-react';
 
 // --- IMPORTAMOS EL NUEVO LOGO ---
@@ -17,7 +18,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V10.21 - Dashboard Clean"; 
+const APP_VERSION = "V10.26 - Final Clean (No Errors)"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
 const SUPER_ADMIN_EMAIL = "jesusblanco@mmesl.com";
@@ -242,9 +243,25 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
     const [filterUserId, setFilterUserId] = useState<string>('all');
     const uniqueSalesUsers = Array.from(new Set(contacts.map((c: any) => c.user_id))).map(id => { const contact = contacts.find((c: any) => c.user_id === id); const name = contact?.profiles?.full_name || contact?.profiles?.email || 'Desconocido'; return { id, label: name }; }).filter(u => u.label !== 'Desconocido');
     let relevantContacts = contacts; if (userRole === 'sales') { relevantContacts = contacts.filter((c: any) => c.user_id === session.user.id); } else { if (filterUserId !== 'all') { relevantContacts = contacts.filter((c: any) => c.user_id === filterUserId); } }
-    const total = relevantContacts.length; const clients = relevantContacts.filter((c: any) => c.sap_status === 'Cliente SAP').length; const leads = relevantContacts.filter((c: any) => ['Lead SAP', 'Nuevo Prospecto'].includes(c.sap_status)).length; const today = new Date().toISOString().split('T')[0]; const pending = relevantContacts.filter((c: any) => c.next_action_date && c.next_action_date <= today).length;
+    const total = relevantContacts.length; const clients = relevantContacts.filter((c: any) => c.sap_status === 'Cliente SAP').length; const leads = relevantContacts.filter((c: any) => ['Lead SAP', 'Nuevo Prospecto'].includes(c.sap_status)).length; 
+    
+    // LOGICA DE FECHAS MEJORADA
+    const today = new Date().toISOString().split('T')[0]; 
+    const overdue = relevantContacts.filter((c: any) => c.next_action_date && c.next_action_date < today).length;
+    
+    const todayTasks = relevantContacts.filter((c: any) => c.next_action_date === today);
+    const todayTotal = todayTasks.length;
+    const todayVisits = todayTasks.filter((c: any) => c.next_action?.toLowerCase().includes('visita')).length;
+    const todayCalls = todayTasks.filter((c: any) => c.next_action?.toLowerCase().includes('llamada')).length;
+    const todayOthers = todayTotal - todayVisits - todayCalls;
+
     const withMaterials = relevantContacts.filter((c: any) => c.contact_materials && c.contact_materials.length > 0).length; const withMachines = relevantContacts.filter((c: any) => c.contact_machinery && c.contact_machinery.length > 0).length; const materialsPct = total > 0 ? Math.round((withMaterials / total) * 100) : 0; const machinesPct = total > 0 ? Math.round((withMachines / total) * 100) : 0;
     const displayName = userProfile?.full_name || userProfile?.email?.split('@')[0] || 'Usuario';
+
+    // NUEVA LÓGICA: Obtener últimos 5 contactos modificados para "Actividad Reciente"
+    const recentActivity = [...relevantContacts]
+        .sort((a: any, b: any) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime())
+        .slice(0, 5);
 
     return (
       <div className="space-y-6 animate-in fade-in duration-500 w-full overflow-hidden pb-24">
@@ -252,19 +269,113 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
              <div><h2 className="text-lg md:text-2xl font-bold text-slate-800 flex items-center gap-2">Hola, <span className="text-blue-600">{displayName}</span></h2><div className="flex items-center gap-2 mt-1"><span className="text-xs font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded uppercase">{userRole === 'sales' ? 'Comercial' : userRole === 'manager' ? 'Jefe Ventas' : 'Administrador'}</span><span className="text-[10px] text-slate-400">{APP_VERSION}</span></div></div>
              {(userRole !== 'sales') && (<div className="flex items-center gap-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm w-full md:w-auto"><Filter size={14} className="text-slate-400 ml-1 shrink-0" /><select className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer w-full md:min-w-[150px]" value={filterUserId} onChange={(e) => setFilterUserId(e.target.value)}><option value="all">Ver: Todos</option><option disabled>──────────</option>{uniqueSalesUsers.map((u: any) => (<option key={u.id} value={u.id}>{u.label}</option>))}</select></div>)}
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full">
-          <Card className="p-3 md:p-4 border-l-4 border-l-blue-600 flex justify-between items-center"><div><p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase">Total</p><h3 className="text-xl md:text-2xl font-bold text-slate-900">{total}</h3></div><div className="bg-blue-50 p-2 rounded-lg text-blue-600"><Users size={18}/></div></Card>
-          <Card className="p-3 md:p-4 border-l-4 border-l-emerald-500 flex justify-between items-center"><div><p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase">Clientes</p><h3 className="text-xl md:text-2xl font-bold text-slate-900">{clients}</h3></div><div className="bg-emerald-50 p-2 rounded-lg text-emerald-600"><CheckCircle2 size={18}/></div></Card>
-          <Card className="p-3 md:p-4 border-l-4 border-l-indigo-500 flex justify-between items-center"><div><p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase">Prospectos</p><h3 className="text-xl md:text-2xl font-bold text-slate-900">{leads}</h3></div><div className="bg-indigo-50 p-2 rounded-lg text-indigo-600"><Target size={18}/></div></Card>
-          <Card className={`p-3 md:p-4 border-l-4 flex justify-between items-center ${pending > 0 ? 'border-l-red-500 bg-red-50/30' : 'border-l-slate-300'}`}><div><p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase">Pendiente Hoy</p><h3 className={`text-xl md:text-2xl font-bold ${pending > 0 ? 'text-red-600' : 'text-slate-900'}`}>{pending}</h3></div><div className="bg-white p-2 rounded-lg text-slate-400 border border-slate-100"><Clock size={18}/></div></Card>
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
-            <Card className="p-6"><h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-slate-800"><BarChart2 className="text-purple-600"/> Calidad de Fichas</h3><div className="space-y-6"><div><div className="flex justify-between text-sm mb-1"><span className="text-slate-600 flex items-center gap-2"><FileText size={14}/> Datos Materiales Completos</span><span className="font-bold text-slate-800">{materialsPct}%</span></div><div className="w-full bg-slate-100 rounded-full h-2.5"><div className="bg-purple-600 h-2.5 rounded-full transition-all duration-1000" style={{ width: `${materialsPct}%` }}></div></div><p className="text-xs text-slate-400 mt-1">{withMaterials} de {total} contactos tienen materiales registrados.</p></div><div><div className="flex justify-between text-sm mb-1"><span className="text-slate-600 flex items-center gap-2"><Target size={14}/> Parque Maquinaria Completo</span><span className="font-bold text-slate-800">{machinesPct}%</span></div><div className="w-full bg-slate-100 rounded-full h-2.5"><div className="bg-orange-500 h-2.5 rounded-full transition-all duration-1000" style={{ width: `${machinesPct}%` }}></div></div><p className="text-xs text-slate-400 mt-1">{withMachines} de {total} contactos tienen maquinaria registrada.</p></div></div></Card>
-            <Card className="p-6 flex flex-col justify-center items-center text-center bg-gradient-to-br from-white to-slate-50">
-                {/* --- CAMBIO: Eliminado el Logo y reducido el margen superior --- */}
-                <h3 className="font-bold text-lg text-slate-800 mb-4">Acceso Rápido</h3>
-                <div className="flex flex-col gap-3 w-full max-w-xs"><Button onClick={() => { setEditingContact(null); setView('form'); }} icon={UserPlus} className="shadow-lg justify-center w-full">Nuevo Briefing</Button><Button onClick={() => setView('agenda')} icon={Calendar} variant="secondary" className="justify-center w-full border border-slate-200">Ver Agenda Completa</Button></div>
+        
+        {/* KPI CARDS CONSOLIDATED & ACTIONABLE (NUEVO DISEÑO HORIZONTAL) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 w-full mb-2">
+            
+            {/* 1. ESTADÍSTICAS GENERALES (De Izquierda a Derecha) */}
+            <Card className="p-2 md:p-4 border-l-4 border-l-blue-600 flex items-center h-full">
+                <div className="flex w-full justify-between items-center divide-x divide-slate-100">
+                    <div className="px-2 md:px-4 flex-1 text-center">
+                        <p className="text-[9px] md:text-[10px] text-slate-500 font-bold uppercase mb-1">Base de Datos</p>
+                        <h3 className="text-xl md:text-2xl font-bold text-slate-800">{total}</h3>
+                    </div>
+                    <div className="px-2 md:px-4 flex-1 text-center">
+                        <p className="text-[9px] md:text-[10px] text-emerald-600 font-bold uppercase mb-1">Clientes</p>
+                        <h3 className="text-xl md:text-2xl font-bold text-emerald-700">{clients}</h3>
+                    </div>
+                    <div className="px-2 md:px-4 flex-1 text-center">
+                        <p className="text-[9px] md:text-[10px] text-indigo-500 font-bold uppercase mb-1">Prospectos</p>
+                        <h3 className="text-xl md:text-2xl font-bold text-indigo-600">{leads}</h3>
+                    </div>
+                </div>
             </Card>
+
+            {/* 2. GESTIÓN DE TIEMPO (Lado a Lado) */}
+            <div className="grid grid-cols-2 gap-3 h-full">
+                {/* ATRASADAS */}
+                <div className="h-full cursor-pointer" onClick={() => setView('agenda')}>
+                    <Card className={`p-3 border-l-4 flex flex-col justify-center items-center text-center transition-all h-full hover:shadow-md ${overdue > 0 ? 'border-l-red-500 bg-red-50/40 hover:bg-red-50' : 'border-l-slate-300 hover:bg-slate-50'}`}>
+                        <div className="flex items-center gap-1 mb-1">
+                            <AlertTriangle size={14} className={overdue > 0 ? 'text-red-600' : 'text-slate-400'}/>
+                            <p className={`text-[9px] font-bold uppercase ${overdue > 0 ? 'text-red-700' : 'text-slate-500'}`}>Atrasado</p>
+                        </div>
+                        <h3 className={`text-2xl font-bold ${overdue > 0 ? 'text-red-700' : 'text-slate-400'}`}>{overdue}</h3>
+                    </Card>
+                </div>
+
+                {/* AGENDA HOY */}
+                <div className="h-full cursor-pointer" onClick={() => setView('agenda')}>
+                    <Card className="p-3 border-l-4 border-l-blue-500 bg-blue-50/20 hover:bg-blue-50 transition-all h-full hover:shadow-md flex flex-col justify-center items-center text-center">
+                        <div className="flex items-center gap-1 mb-1">
+                            <ListTodo size={14} className="text-blue-600"/>
+                            <p className="text-[9px] font-bold uppercase text-blue-700">Para Hoy</p>
+                        </div>
+                        <h3 className="text-2xl font-bold text-blue-900">{todayTotal}</h3>
+                        <p className="text-[9px] text-slate-500 mt-0.5">
+                            {todayTotal > 0 ? (
+                                <>
+                                    {todayVisits} Vis, {todayCalls} Llam
+                                    {todayOthers > 0 && `, ${todayOthers} Otros`}
+                                </>
+                            ) : 'Libre'}
+                        </p>
+                    </Card>
+                </div>
+            </div>
+        </div>
+
+        {/* SECCIÓN PRINCIPAL DASHBOARD */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+            
+            {/* ACTIVIDAD RECIENTE */}
+            <Card className="p-0 overflow-hidden flex flex-col h-full">
+                <div className="p-3 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                    <h3 className="font-bold text-sm text-slate-800 flex items-center gap-2"><Activity size={16} className="text-blue-600"/> Últimos Movimientos</h3>
+                </div>
+                <div className="divide-y divide-slate-50">
+                    {recentActivity.length > 0 ? recentActivity.map((c: any) => (
+                        <div key={c.id} onClick={() => { setEditingContact(c); setView('form'); }} className="p-3 hover:bg-blue-50/50 cursor-pointer transition-colors flex justify-between items-center group">
+                            <div>
+                                <p className="text-xs font-bold text-slate-700 group-hover:text-blue-700 transition-colors">{c.fiscal_name}</p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                    <span className={`text-[9px] px-1.5 py-0.5 rounded border uppercase font-bold ${c.sap_status === 'Cliente SAP' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>{c.sap_status}</span>
+                                    <span className="text-[9px] text-slate-400 truncate max-w-[150px]">{c.next_action || 'Sin acción'}</span>
+                                </div>
+                            </div>
+                            <Edit size={14} className="text-slate-300 group-hover:text-blue-500" />
+                        </div>
+                    )) : (
+                        <div className="p-8 text-center text-slate-400 text-sm italic">No hay actividad reciente.</div>
+                    )}
+                </div>
+            </Card>
+
+            {/* COLUMNA DERECHA: ACCESO RÁPIDO + CALIDAD */}
+            <div className="flex flex-col gap-4 h-full">
+                {/* ACCESO RÁPIDO COMPACTO */}
+                <Card className="p-3 flex flex-col justify-center items-center text-center bg-white border border-slate-200 shadow-sm">
+                    <h3 className="font-bold text-sm text-slate-700 mb-2 flex items-center gap-2"><KeyRound size={14} className="text-blue-500"/> Acceso Rápido</h3>
+                    <div className="flex flex-row gap-2 w-full">
+                        <Button onClick={() => { setEditingContact(null); setView('form'); }} icon={UserPlus} className="flex-1 shadow-sm justify-center bg-blue-600 hover:bg-blue-700 text-white border-none py-2 text-xs">Nuevo Briefing</Button>
+                        <Button onClick={() => setView('agenda')} icon={Calendar} variant="secondary" className="flex-1 justify-center border border-slate-200 bg-white hover:bg-slate-50 py-2 text-xs">Ver Agenda</Button>
+                    </div>
+                </Card>
+
+                <Card className="p-4 flex-1 flex flex-col justify-center">
+                    <h3 className="font-bold text-xs mb-3 flex items-center gap-2 text-slate-600 uppercase tracking-wide"><BarChart2 size={14} className="text-purple-600"/> Calidad de Datos</h3>
+                    <div className="space-y-4">
+                        <div>
+                            <div className="flex justify-between text-xs mb-1"><span className="text-slate-600">Materiales</span><span className="font-bold text-slate-800">{materialsPct}%</span></div>
+                            <div className="w-full bg-slate-100 rounded-full h-1.5"><div className="bg-purple-600 h-1.5 rounded-full" style={{ width: `${materialsPct}%` }}></div></div>
+                        </div>
+                        <div>
+                            <div className="flex justify-between text-xs mb-1"><span className="text-slate-600">Maquinaria</span><span className="font-bold text-slate-800">{machinesPct}%</span></div>
+                            <div className="w-full bg-slate-100 rounded-full h-1.5"><div className="bg-orange-500 h-1.5 rounded-full" style={{ width: `${machinesPct}%` }}></div></div>
+                        </div>
+                    </div>
+                </Card>
+            </div>
         </div>
       </div>
     );
