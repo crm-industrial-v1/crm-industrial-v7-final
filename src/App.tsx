@@ -17,7 +17,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V10.13 - Final Clean Build"; 
+const APP_VERSION = "V10.14 - Agenda Backlog Added"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
 const SUPER_ADMIN_EMAIL = "jesusblanco@mmesl.com";
@@ -266,8 +266,7 @@ const DashboardView = ({ contacts, userRole, session, setEditingContact, setView
     );
 };
 
-// 4. VISTA AGENDA SEMANAL (MODIFICADA - DRAG & DROP)
-// CORRECCIÓN: Eliminados 'setEditingContact' y 'setView' de los props porque no se usaban aquí
+// 4. VISTA AGENDA SEMANAL (MODIFICADA - CON COLUMNA BACKLOG / ATRASADAS)
 const AgendaView = ({ contacts, onActionComplete }: any) => {
     const [weekOffset, setWeekOffset] = useState(0);
     const [modalOpen, setModalOpen] = useState(false);
@@ -276,12 +275,19 @@ const AgendaView = ({ contacts, onActionComplete }: any) => {
 
     const handleDragStart = (e: React.DragEvent, taskId: string) => { setDraggedTaskId(taskId); e.dataTransfer.effectAllowed = "move"; };
     const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; };
+    
+    // Al soltar en un día de la semana
     const handleDrop = async (e: React.DragEvent, targetDate: string) => {
         e.preventDefault();
         if (!draggedTaskId) return;
         const task = contacts.find((c: any) => c.id === draggedTaskId);
+        // Solo actualizamos si la fecha cambia
         if (task && task.next_action_date !== targetDate) {
-            try { const { error } = await supabase.from('industrial_contacts').update({ next_action_date: targetDate }).eq('id', draggedTaskId); if (error) throw error; await onActionComplete(); } catch (err: any) { alert("Error: " + err.message); }
+            try { 
+                const { error } = await supabase.from('industrial_contacts').update({ next_action_date: targetDate }).eq('id', draggedTaskId); 
+                if (error) throw error; 
+                await onActionComplete(); 
+            } catch (err: any) { alert("Error: " + err.message); }
         }
         setDraggedTaskId(null);
     };
@@ -310,14 +316,96 @@ const AgendaView = ({ contacts, onActionComplete }: any) => {
         } catch (error: any) { alert("Error: " + error.message); }
     };
 
+    // Generar días de la semana
     const getWeekDays = (offset: number) => { const curr = new Date(); const day = curr.getDay(); const diff = curr.getDate() - day + (day === 0 ? -6 : 1); const monday = new Date(curr.setDate(diff)); monday.setDate(monday.getDate() + (offset * 7)); const week = []; for (let i = 0; i < 5; i++) { const d = new Date(monday); d.setDate(monday.getDate() + i); week.push(d.toISOString().split('T')[0]); } return week; };
-    const weekDays = getWeekDays(weekOffset); const today = new Date().toISOString().split('T')[0]; const dayNames = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]; const tasks = contacts.filter((c: any) => c.next_action_date);
+    const weekDays = getWeekDays(weekOffset); 
+    const currentWeekStart = weekDays[0]; // El Lunes de la semana visualizada
+    const today = new Date().toISOString().split('T')[0]; 
+    const dayNames = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+    
+    // Tareas generales
+    const tasks = contacts.filter((c: any) => c.next_action_date);
+
+    // FILTRO: Tareas Atrasadas (Fecha anterior al Lunes de esta semana visualizada)
+    const overdueTasks = tasks.filter((c: any) => c.next_action_date < currentWeekStart).sort((a: any, b: any) => a.next_action_date.localeCompare(b.next_action_date));
+
+    // Renderizador de Tarjeta (Reutilizable)
+    const renderTaskCard = (task: any, isOverdue: boolean = false) => {
+        let borderColor = "border-l-blue-500"; 
+        let icon = <Phone size={12} />; 
+        const action = task.next_action?.toLowerCase() || ''; 
+        
+        if (isOverdue) borderColor = "border-l-red-500 bg-red-50"; // Color rojo para atrasadas
+        else {
+            if (action.includes("visita")) { borderColor = "border-l-emerald-500"; icon = <Users size={12}/>; } 
+            if (action.includes("oferta") || action.includes("presupuesto")) { borderColor = "border-l-orange-500"; icon = <FileText size={12}/>; }
+        }
+
+        return ( 
+            <div key={task.id} draggable onDragStart={(e) => handleDragStart(e, task.id)} onClick={() => { setSelectedTask(task); setModalOpen(true); }} className={`bg-white p-3 rounded-lg border border-slate-100 border-l-4 ${borderColor} shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md transition-all active:scale-95 group relative mb-2`}>
+                <div className="flex justify-between items-start mb-1">
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 ${isOverdue ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}>
+                        {icon} {isOverdue ? `${task.next_action_date.split('-')[2]}/${task.next_action_date.split('-')[1]}` : task.next_action_time?.slice(0,5)}
+                    </span>
+                    {isOverdue && <span className="text-[9px] font-bold text-red-600 animate-pulse">!</span>}
+                </div>
+                <p className="text-xs font-bold text-slate-800 line-clamp-1">{task.fiscal_name}</p>
+                <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1 capitalize">{task.next_action}</p>
+            </div> 
+        );
+    };
 
     return (
         <div className="space-y-4 animate-in fade-in pb-24 h-full flex flex-col">
             <TaskActionModal isOpen={modalOpen} onClose={() => setModalOpen(false)} taskTitle={selectedTask?.next_action || 'Tarea'} currentTask={selectedTask} onAction={handleModalAction} />
-            <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm shrink-0 gap-4"><h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Calendar className="text-blue-600"/> Agenda Semanal</h2><div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200"><button onClick={() => setWeekOffset(weekOffset - 1)} className="p-2 hover:bg-white rounded-md shadow-sm transition-all text-slate-600"><ArrowLeft size={18}/></button><span className="text-sm font-bold w-32 text-center text-slate-700">{weekOffset === 0 ? "Esta Semana" : weekOffset === 1 ? "Próxima" : weekOffset === -1 ? "Pasada" : `Semana ${weekOffset > 0 ? '+' : ''}${weekOffset}`}</span><button onClick={() => setWeekOffset(weekOffset + 1)} className="p-2 hover:bg-white rounded-md shadow-sm transition-all text-slate-600"><ArrowRight size={18}/></button></div></div>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 h-full overflow-y-auto">{weekDays.map((dateStr, index) => { const dayTasks = tasks.filter((c: any) => c.next_action_date === dateStr).sort((a: any, b: any) => (a.next_action_time || '00:00').localeCompare(b.next_action_time || '00:00')); const isToday = dateStr === today; return ( <div key={dateStr} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, dateStr)} className={`flex flex-col h-full min-h-[200px] rounded-xl border transition-colors ${isToday ? 'border-blue-400 ring-1 ring-blue-200 bg-blue-50/20' : 'border-slate-200 bg-slate-50/30'}`}><div className={`p-3 text-center border-b ${isToday ? 'bg-blue-100/50 border-blue-200' : 'bg-slate-100/50 border-slate-200'} rounded-t-xl`}><p className={`text-xs font-bold uppercase ${isToday ? 'text-blue-700' : 'text-slate-500'}`}>{dayNames[index]}</p><p className={`text-sm font-bold ${isToday ? 'text-blue-900' : 'text-slate-700'}`}>{dateStr.split('-')[2]}/{dateStr.split('-')[1]}</p></div><div className="p-2 space-y-2 flex-1">{dayTasks.map((task: any) => { let borderColor = "border-l-blue-500"; let icon = <Phone size={12} />; const action = task.next_action?.toLowerCase() || ''; if (action.includes("visita")) { borderColor = "border-l-emerald-500"; icon = <Users size={12}/>; } if (action.includes("oferta") || action.includes("presupuesto")) { borderColor = "border-l-orange-500"; icon = <FileText size={12}/>; } return ( <div key={task.id} draggable onDragStart={(e) => handleDragStart(e, task.id)} onClick={() => { setSelectedTask(task); setModalOpen(true); }} className={`bg-white p-3 rounded-lg border border-slate-100 border-l-4 ${borderColor} shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md transition-all active:scale-95 group relative`}><div className="flex justify-between items-start mb-1"><span className="text-[10px] font-bold bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 flex items-center gap-1">{icon} {task.next_action_time?.slice(0,5)}</span></div><p className="text-xs font-bold text-slate-800 line-clamp-1">{task.fiscal_name}</p><p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1 capitalize">{task.next_action}</p></div> ); })}{dayTasks.length === 0 && <div className="h-20 flex items-center justify-center opacity-30"><p className="text-xs text-slate-400 italic">--</p></div>}</div></div> ); })}</div>
+            
+            {/* CABECERA AGENDA */}
+            <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm shrink-0 gap-4">
+                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Calendar className="text-blue-600"/> Agenda Semanal</h2>
+                <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200">
+                    <button onClick={() => setWeekOffset(weekOffset - 1)} className="p-2 hover:bg-white rounded-md shadow-sm transition-all text-slate-600"><ArrowLeft size={18}/></button>
+                    <span className="text-sm font-bold w-32 text-center text-slate-700">{weekOffset === 0 ? "Esta Semana" : weekOffset === 1 ? "Próxima" : weekOffset === -1 ? "Pasada" : `Semana ${weekOffset > 0 ? '+' : ''}${weekOffset}`}</span>
+                    <button onClick={() => setWeekOffset(weekOffset + 1)} className="p-2 hover:bg-white rounded-md shadow-sm transition-all text-slate-600"><ArrowRight size={18}/></button>
+                </div>
+            </div>
+
+            {/* GRID DE 6 COLUMNAS (1 Backlog + 5 Días) */}
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-4 h-full overflow-y-auto">
+                
+                {/* COLUMNA 1: ATRASADAS / PENDIENTES */}
+                <div className="flex flex-col h-full min-h-[200px] rounded-xl border border-red-200 bg-red-50/30">
+                    <div className="p-3 text-center border-b border-red-200 bg-red-100/50 rounded-t-xl">
+                        <p className="text-xs font-bold uppercase text-red-700 flex items-center justify-center gap-1"><AlertCircle size={12}/> Pendientes</p>
+                        <p className="text-[10px] font-bold text-red-800 opacity-70">Anteriores a esta semana</p>
+                    </div>
+                    <div className="p-2 flex-1 overflow-y-auto">
+                        {overdueTasks.length > 0 ? (
+                            overdueTasks.map((task: any) => renderTaskCard(task, true))
+                        ) : (
+                            <div className="h-20 flex items-center justify-center opacity-40"><p className="text-[10px] text-slate-500 italic text-center">¡Todo al día! <br/>Sin tareas antiguas.</p></div>
+                        )}
+                    </div>
+                </div>
+
+                {/* COLUMNAS 2-6: LUNES A VIERNES */}
+                {weekDays.map((dateStr, index) => { 
+                    const dayTasks = tasks.filter((c: any) => c.next_action_date === dateStr).sort((a: any, b: any) => (a.next_action_time || '00:00').localeCompare(b.next_action_time || '00:00')); 
+                    const isToday = dateStr === today; 
+                    
+                    return ( 
+                        <div key={dateStr} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, dateStr)} className={`flex flex-col h-full min-h-[200px] rounded-xl border transition-colors ${isToday ? 'border-blue-400 ring-1 ring-blue-200 bg-blue-50/20' : 'border-slate-200 bg-slate-50/30'}`}>
+                            <div className={`p-3 text-center border-b ${isToday ? 'bg-blue-100/50 border-blue-200' : 'bg-slate-100/50 border-slate-200'} rounded-t-xl`}>
+                                <p className={`text-xs font-bold uppercase ${isToday ? 'text-blue-700' : 'text-slate-500'}`}>{dayNames[index]}</p>
+                                <p className={`text-sm font-bold ${isToday ? 'text-blue-900' : 'text-slate-700'}`}>{dateStr.split('-')[2]}/{dateStr.split('-')[1]}</p>
+                            </div>
+                            <div className="p-2 flex-1 overflow-y-auto">
+                                {dayTasks.map((task: any) => renderTaskCard(task, false))}
+                                {dayTasks.length === 0 && <div className="h-20 flex items-center justify-center opacity-30"><p className="text-xs text-slate-400 italic">--</p></div>}
+                            </div>
+                        </div> 
+                    ); 
+                })}
+            </div>
         </div>
     );
 };
