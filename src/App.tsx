@@ -18,7 +18,7 @@ import { SectionHeader } from './components/ui/SectionHeader';
 import ContactForm from './components/crm/ContactForm';
 
 // --- VERSIÓN ACTUALIZADA ---
-const APP_VERSION = "V10.32 - Edit Actions Sync"; 
+const APP_VERSION = "V10.33 - Agenda Province Visible"; 
 
 // --- CONFIGURACIÓN SUPER ADMIN ---
 const SUPER_ADMIN_EMAIL = "jesusblanco@mmesl.com";
@@ -74,13 +74,13 @@ const NewActionModal = ({ isOpen, onClose, onSave, clientName }: any) => {
     );
 };
 
-// 0.2. MODAL DE GESTIÓN DE TAREA (AGENDA) - ACTUALIZADO V10.32
+// 0.2. MODAL DE GESTIÓN DE TAREA (AGENDA)
 const TaskActionModal = ({ isOpen, onClose, onAction, taskTitle, currentTask }: any) => {
     const [step, setStep] = useState(1);
     const [report, setReport] = useState('');
     const [deleteReason, setDeleteReason] = useState('');
     
-    // ESTADOS PARA LA EDICIÓN (MATCHING BRIEFING)
+    // ESTADOS PARA LA EDICIÓN
     const [editType, setEditType] = useState('Llamada');
     const [editDetails, setEditDetails] = useState('');
 
@@ -103,7 +103,6 @@ const TaskActionModal = ({ isOpen, onClose, onAction, taskTitle, currentTask }: 
             else if (currentTitle.toLowerCase().includes('cierre')) detectedType = 'Cierre';
             
             setEditType(detectedType);
-            // Intentamos limpiar el título para dejar solo el detalle si existe
             setEditDetails(currentTitle.replace(detectedType, '').replace(/\[|\]/g, '').trim());
 
             if(currentTask) {
@@ -118,7 +117,6 @@ const TaskActionModal = ({ isOpen, onClose, onAction, taskTitle, currentTask }: 
     const isReportValid = report.trim().length > 5;
     const isDeleteReasonValid = deleteReason.trim().length > 5;
 
-    // Función para construir el string final de edición
     const handleSaveEdit = () => {
         const finalString = editDetails ? `${editType} [${editDetails}]` : editType;
         onAction('edit', '', { action: finalString });
@@ -200,7 +198,7 @@ const TaskActionModal = ({ isOpen, onClose, onAction, taskTitle, currentTask }: 
                     </div>
                 )}
 
-                {/* --- PASO 5: EDITAR TAREA (CORREGIDO: MISMA LÓGICA BRIEFING) --- */}
+                {/* --- PASO 5: EDITAR TAREA (SELECTOR COMO EN BRIEFING) --- */}
                 {step === 5 && (
                     <div className="p-5 space-y-4 animate-in slide-in-from-right-4 duration-300">
                         <div className="bg-orange-50 p-3 rounded text-xs text-orange-800 mb-2 border border-orange-100">Modifica el concepto de la tarea actual.</div>
@@ -227,7 +225,7 @@ const TaskActionModal = ({ isOpen, onClose, onAction, taskTitle, currentTask }: 
                     </div>
                 )}
 
-                {/* --- PASO 6: ELIMINAR CON MOTIVO (NUEVO) --- */}
+                {/* --- PASO 6: ELIMINAR CON MOTIVO --- */}
                 {step === 6 && (
                     <div className="p-5 space-y-4 animate-in slide-in-from-right-4 duration-300">
                         <div className="bg-red-50 p-3 rounded text-xs text-red-800 mb-2 border border-red-100 flex items-center gap-2"><AlertCircle size={14}/> Esta acción borrará la tarea de la agenda.</div>
@@ -578,7 +576,7 @@ const AgendaView = ({ contacts, onActionComplete, userRole, session }: any) => {
 
     const overdueTasks = relevantTasks.filter((c: any) => c.next_action_date < currentWeekStart).sort((a: any, b: any) => a.next_action_date.localeCompare(b.next_action_date));
 
-    // RENDERIZADOR DE TARJETA
+    // RENDERIZADOR DE TARJETA MEJORADO (PROVINCIAS VISIBLES)
     const renderTaskCard = (task: any, isOverdue: boolean = false, majorityProvince: string | null = null) => {
         let borderColor = "border-l-blue-500"; 
         let icon = <Phone size={12} />; 
@@ -591,6 +589,7 @@ const AgendaView = ({ contacts, onActionComplete, userRole, session }: any) => {
             if (action.includes("oferta") || action.includes("presupuesto")) { borderColor = "border-l-orange-500"; icon = <FileText size={12}/>; }
         }
 
+        // Detectar si la provincia no coincide con la mayoritaria
         const isWrongProvince = isVisit && majorityProvince && task.state && task.state !== majorityProvince;
 
         return ( 
@@ -601,13 +600,18 @@ const AgendaView = ({ contacts, onActionComplete, userRole, session }: any) => {
                     </span>
                     {isWrongProvince && <span title="Posible error de ruta" className="text-red-500 animate-pulse"><AlertTriangle size={12}/></span>}
                 </div>
-                <p className="text-xs font-bold text-slate-800 line-clamp-1">{task.fiscal_name}</p>
-                <div className="flex justify-between items-end mt-0.5">
+                
+                <p className="text-xs font-bold text-slate-800 line-clamp-1 mb-1">{task.fiscal_name}</p>
+                
+                {/* AQUÍ ESTÁ EL CAMBIO: MOSTRAR PROVINCIA SI ES VISITA */}
+                <div className="flex flex-col gap-0.5">
                     <p className="text-[10px] text-slate-500 line-clamp-1 capitalize">{task.next_action}</p>
+                    
                     {isVisit && task.state && (
-                        <span className={`text-[9px] font-bold px-1 rounded flex items-center gap-0.5 ${isWrongProvince ? 'text-red-600 bg-red-50' : 'text-slate-400 bg-slate-50'}`}>
-                            <MapPin size={8} /> {task.state}
-                        </span>
+                        <div className={`flex items-center gap-1 mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded w-fit ${isWrongProvince ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
+                            <MapPin size={10} /> 
+                            <span className="uppercase truncate max-w-[80px]">{task.state}</span>
+                        </div>
                     )}
                 </div>
             </div> 
